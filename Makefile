@@ -5,10 +5,11 @@ TAB_H_FILES = $(BISON_FILES:%.y=%.tab.h)
 OBJ_FILES = $(TAB_FILES:%.tab.c=%.tab.o) lex.yy.o tinycomp.o
 
 CC = g++
+CPPFLAGS = -x c++
 
 .PHONY: all lexcheck bisoncheck
 
-all: lexcheck bisoncheck compiler
+all: lexcheck bisoncheck compiler docs
 
 # Could 'exit 1' or the like if you don't want students to have multiples of these files
 lexcheck: $(LEX_FILES)
@@ -28,5 +29,9 @@ library: $(OBJ_FILES)
 compiler: library
 	g++ $(OBJ_FILES) -o tinycomp
 
+docs: tinycomp.hpp tinycomp.h
+	doxygen tinycomp.doxy
+
 clean:
 	rm lex.yy.c $(TAB_FILES) $(TAB_H_FILES) *.o tinycomp
+	rm -r docs/*
