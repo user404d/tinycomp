@@ -1,30 +1,46 @@
 #ifndef TINYCOMP_HPP_
 #define TINYCOMP_HPP_
 
+/**
+* @file tinycomp.hpp
+* @brief This header file contains the support code for 
+* the translator of tinycomp.
+*
+* @author Marco Ortolani
+* @date 3/13/2017 
+*/
+
+
 #include <iostream>
 #include <list>
 #include "tinycomp.h"
 
 using namespace std;
 
-/**************************/
-/* REPRESENTING ADDRESSES */
-/**************************/
+/* *************************/
+/* REPRESENTING ADDRESSES  */
+/* *************************/
 
-/* A generic address for 3-addr code instructions. This can be:
+/** A generic address for 3-addr code instructions. This can be:
  * - a constant
  * - a variable (from the symbol table)
  * - the address of an instruction (the famous valuenumber)
  */
 class Address {
 protected:
+	/** Overloading of the << operator.
+	 *  It will print the Address by way of the toString() method
+	 */
 	friend std::ostream& operator<<(std::ostream &, const Address *);
 
-	/* to String() must be defined in derived classes */
+	/** Abstract method for printing an Address.
+	 *  Note that toString() *must* be defined in derived classes.
+	 */
 	virtual const char* toString() const = 0;
 };
 
-/* A specialization of Address to hold a constant */
+/** A specialization of Address to hold a constant 
+ */
 class ConstAddress: public Address {
 private:
 	typeName type;
@@ -34,14 +50,17 @@ private:
 	} val;
 
 public:
-	/* Constructors for all different types */
+	/* Constructor for an int constant */
 	ConstAddress(int i);
+
+	/** Constructor for a float constant. */
 	ConstAddress(float f); 
 
 	const char* toString() const; 
 };
 
-/* A specialization of Address to hold a variable */
+/** A specialization of Address to hold a variable 
+ */
 class VarAddress: public Address {
 private:
 	char lexeme;
@@ -51,7 +70,8 @@ public:
 	const char* toString() const;
 };
 
-/* A specialization of Address to hold an instruction */
+/** A specialization of Address to hold an instruction 
+ */
 class InstrAddress: public Address {
 private:
 	int arrayCodeIndex;
@@ -64,14 +84,18 @@ public:
 	const char* toString() const;
 };
 
-/***************/
-/* 3-ADDR CODE */
-/***************/
+/* **************/
+/*  3-ADDR CODE */
+/* **************/
 
-// Three-address code instruction
+/** A generic three-address code instruction.
+ *  It will store:
+ *  - the instruction's valuenumber
+ *  - the operator \sa oprEnum
+ */
 class TacInstr {
 private:
-	InstrAddress* valueNumber;
+	InstrAddress* valueNumber; 
 	oprEnum op;
 	Address* operand1;
 	Address* operand2;
@@ -86,23 +110,23 @@ public:
 	oprEnum getOp() const;
 	InstrAddress* getValueNumber();
 
-	// for backpathcing "goto"-like instructions
+	/** for backpathcing "goto"-like instructions */
 	void patch(TacInstr*);
 };
 
-/****************************/
-/* COMPILER DATA STRUCTURES */
-/****************************/
+/* ***************************/
+/*  COMPILER DATA STRUCTURES */
+/* ***************************/
 
-/* A simplified abstraction for the memory allocated to the compiler
- * More precisely: the stack
+/** A simplified abstraction for the memory allocated to the compiler.
+ *  More precisely: the stack
  */
 class Memory {
 private:
 	// Private Constructor
 	Memory();
 
-	// Stop the compiler generating methods of copy the object
+	// Stop the compiler from generating methods of copy the object
     Memory(Memory const& copy);            // Not to be implemented
     Memory& operator=(Memory const& copy); // Not to be implemented
 public:
@@ -117,9 +141,10 @@ public:
 };
 
 
-/* A simplified abstraction for representing our target code.
- * Following the textbook, I'm using 3-addr code instructions
- * and storing them in an atual array */
+/** A simplified abstraction for representing our target code.
+ *  Following the textbook, I'm using 3-addr code instructions
+ *  and storing them in an actual array.
+ */
 class TargetCode {
 private:
 	TacInstr* codeArray[1000];
@@ -139,7 +164,7 @@ public:
 	void printOut();
 };
 
-/* An abstraction for the Symbol Table 
+/** An abstraction for the Symbol Table 
  */
 class SymTbl {
 private:
@@ -150,9 +175,9 @@ public:
 	virtual void put(const char* lexeme) = 0;
 };
 
-/* A simple implementation for a Symbol table 
- * I assume here that var id's are 1-char long
- * so the table is just an array with 26 entries 
+/** A simple implementation for a symbol table. 
+ *  I assume here that var id's are 1-char long,
+ *  so the table is just an array with 26 entries 
  */
 class SimpleArraySyTbl : public SymTbl {
 private:
@@ -165,15 +190,16 @@ public:
 	void put(char lexeme);
 };
 
-/*******************************/
-/* ATTRIBUTES FOR NONTERMINALS */
-/*******************************/
+/* ******************************/
+/*  ATTRIBUTES FOR NONTERMINALS */
+/* ******************************/
 
 //// An abstract attribute
 //class Attribute {
+//
 //};
 
-/* expr: arithmetic expressions 
+/** expr: arithmetic expressions 
  * - E.addr
  */
 class ExprAttr: public Attribute {
@@ -186,7 +212,7 @@ public:
 	Address* getAddr();
 };
 
-/* cond: boolean expressions 
+/** cond: boolean expressions 
  * - B.truelist
  * - B.falselist
  */
@@ -205,10 +231,10 @@ public:
 	void addFalse(list<TacInstr*>);
 
 	list<TacInstr*> getTruelist();
-	list<TacInstr*> getFalselist();	
+	list<TacInstr*> getFalselist();
 };
 
-/* stmt: statements
+/** stmt: statements
  * - S.nextlist
  */
 class StmtAttr: public Attribute {
