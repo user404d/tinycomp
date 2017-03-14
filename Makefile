@@ -33,5 +33,5 @@ docs: tinycomp.hpp tinycomp.h
 	doxygen tinycomp.doxy
 
 clean:
-	rm lex.yy.c $(TAB_FILES) $(TAB_H_FILES) *.o tinycomp
+	rm lex.yy.c $(TAB_H_FILES) *.o tinycomp
 	rm -r docs/*

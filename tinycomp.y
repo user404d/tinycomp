@@ -2,7 +2,6 @@
 #include <iostream>
 using namespace std;
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,6 +17,12 @@ void yyerror(const char *s);
 /* Global variables */
 SymTbl *sym = new SimpleArraySyTbl();
 TargetCode *code = new TargetCode();
+
+const char* typestrs[] = {
+	"integer",
+	"floating point"
+};
+
 %}
 
 %union{
@@ -35,9 +40,7 @@ TargetCode *code = new TargetCode();
 
 %token TRUE FALSE
 
-//%token WHILE
 %token WHILE IF PRINT
-//%nonassoc IFX
 %nonassoc ELSE
 
 %left OR AND
@@ -51,12 +54,6 @@ TargetCode *code = new TargetCode();
 %type <attrs>stmt 
 %type <attrs>stmt_list 
 %type <attrs>cond
-
-//%initial-action { 
-//	for(int i=0; i<1000; i++) {
-//		code[i].op = UNKNOWNOpr;
-//	}
-//}
 
 %%
 prog:	decls stmt_list 		{ 
@@ -73,8 +70,8 @@ decls:	decls decl
 decl: TYPE id_list ';'
 	;
 
-id_list:	id_list ',' ID 	{cout << "Recognizing var " << $3 << " of type " << $<typeLexeme>0 << "\n"; }
-	   | 	ID 				{cout << "Recognizing var " << $1 << " of type " << $<typeLexeme>0 << "\n"; }
+id_list:	id_list ',' ID 	{cout << "Recognizing var " << $3 << " of type " << typestrs[$<typeLexeme>0] << "\n"; }
+	   | 	ID 				{cout << "Recognizing var " << $1 << " of type " << typestrs[$<typeLexeme>0] << "\n"; }
 	;
 
 stmt_list:
@@ -119,12 +116,16 @@ stmt:
 
 expr:
 	INTEGER {
-		Address *ia = new ConstAddress($1);
-		// generate a copy instr where to store the integer
-		TacInstr* i = code->gen(copyOpr, ia, NULL);
+				Address *ia = new ConstAddress($1);
+				// generate a copy instr where to store the integer
+				TacInstr* i = code->gen(copyOpr, ia, NULL);
 
-		$$ = new ExprAttr(i);
-	}
+				$$ = new ExprAttr(i);
+			}
+	| ID 	{
+				Address *ia = new ConstAddress($1);
+
+			}
 	;
 
 cond:
@@ -154,7 +155,7 @@ cond:
 				attrs->addFalse(((BoolAttr *)$4)->getFalselist());
 
 				$$ = attrs;
-			}
+			} 
 	;
 
 %%

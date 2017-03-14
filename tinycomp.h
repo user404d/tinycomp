@@ -10,11 +10,22 @@
 * @date 3/13/2017 
 */
 
-/** Type system */
-typedef enum {intType, floatType} typeName;
+/** Type system; each native data type is stored as a value in this enumeration. */
+typedef enum {
+	intType, 	/*!< integer type */
+	floatType	/*!< floating point type */
+} typeName;
 
 /** Enums for 3-addr code - operators */
-typedef enum { UNKNOWNOpr, copyOpr, addOpr, mulOpr, jmpOpr, condJmpOpr, fakeOpr} oprEnum;
+typedef enum { 
+	UNKNOWNOpr, /*!< this is the default, for an unknown operator (it should not occur) */
+	copyOpr, 	/*!< the assignment operator */
+	addOpr, 	/*!< the addition operator */
+	mulOpr, 	/*!< the multiplication operator */
+	jmpOpr, 	/*!< unconditional jump; the goto operator */
+	condJmpOpr, /*!< conditional jump; the if ... goto operator */
+	fakeOpr		/*!< a temporary "fake" operator for simulating the ones yet-to-be implemented */
+} oprEnum;
 
 /** An empty class representing the attributes of the grammar symbols.
  * It must be specialized for each specific attribute.
