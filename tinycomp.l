@@ -57,6 +57,11 @@ void yyerror(const char *);
                 return INTEGER;
             }
 
+[0-9]\.[0-9]* {
+                yylval.fValue = atof(yytext);
+                return FLOAT;
+            }
+
 [-()<>=+*/,;{}.] {
                 return *yytext;
              }

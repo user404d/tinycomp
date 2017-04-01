@@ -56,6 +56,10 @@ public:
 	/** Constructor for a float constant. */
 	ConstAddress(float f); 
 
+	/** Returns the constant's type (as a typeName enum)
+	 */
+	typeName getType();
+
 	/** Concrete method for printing a ConstAddress;
 	 *  it's a concrete implementation of the corresponding abstract method in Address
 	 */
@@ -67,11 +71,55 @@ public:
 class VarAddress: public Address {
 private:
 	char lexeme;
+
+	typeName type;
+	int width;
+
+	/* pointer to the memory, where the var value is stored */
+	int offset;
+
 public:
-	/** Constructor: creates a variable from its id (assuming only 1-char id's) */
-	VarAddress(char v);
+	/** Constructor: creates a variable address from its id (assuming only 1-char id's).
+	 */
+	VarAddress(char v, typeName t, int offset);
+
+	/** Returns the variable's type (as a typeName enum)
+	 */
+	typeName getType();
+
+	/** Returns the variable's width, which depends on its type
+	 */
+	int getWidth();
+
+	/** Returns the pointer to the memory location holding the variable's value
+	 */
+	int getOffset();
 
 	/** Concrete method for printing a VarAddress;
+	 *  it's a concrete implementation of the corresponding abstract method in Address
+	 */
+	const char* toString() const;
+};
+
+/** A specialization of Address to hold a temporary 
+ */
+class TempAddress: public Address {
+private:
+	static int counter;
+
+	int name;
+
+	int offset;
+public: 
+	/** Constructor: creates a temporary at the specified offset in memory
+	 */
+	TempAddress(int offset);
+
+	/** Returns the pointer to the memory location holding the temporary
+	 */
+	int getOffset();
+
+	/** Concrete method for printing a TempAddress;
 	 *  it's a concrete implementation of the corresponding abstract method in Address
 	 */
 	const char* toString() const;
@@ -110,6 +158,8 @@ private:
 	Address* operand1;
 	Address* operand2;
 
+	TempAddress* temp;
+
 	void setValueNumber(int vn);
 	friend class TargetCode;
 
@@ -120,8 +170,9 @@ public:
 	 * @param op The operator for this instruction, as an oprEnum
 	 * @param operand1 The first operand, as a generic Address
 	 * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
+	 * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
 	 */
-	TacInstr(oprEnum op, Address* operand1, Address* operand2);
+	TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
 
 	/** Returns the enum representing the operator of this specific instruction */
 	oprEnum getOp() const;
@@ -141,9 +192,18 @@ public:
  */
 class Memory {
 private:
+	/* our (simulation of the) actual memory */
+	void* storage;
+
+	/* the pointer to the next block of free memory */
+	int offset; 
+
 	/** Private Constructor
 	 */
-	Memory();
+	Memory() {
+		storage = (void*)malloc(1000000 * sizeof(void*) );
+		offset = 0;
+	}
 
 	// Stop the compiler from generating methods of copy the object
     Memory(Memory const& copy);            // Not to be implemented
@@ -161,6 +221,50 @@ public:
         static Memory instance;
         return instance;
     }
+
+    /** Store the bytes pointed to by val in memory.
+     *  Note that we don't pass the type of the variable to be stored, as this 
+     *  has no relevance for the memory.
+     *
+     *	Returns the *beginning* address of the value just stored.
+     */
+    int store(void* val, int width) {
+    	/* offset tells us where free memory begins 
+    	 * Unfortunaltely, arithmetic on void pointers is not allowed in C,
+    	 * so I need to cast to char, and cast back
+    	 */
+    	void* begin = (void*)((char*)storage + offset);
+
+    	memcpy(begin, val, width);
+
+    	int oldoffset = offset;
+    	offset += width;
+
+    	return oldoffset;
+    }
+
+    /** Returns the *beginning* address of some value, supposedly stored in memory.
+     *  Note that we have no clue about the type of such value, or it's width.
+     *  They must be "computed/retrieved" externally.
+     */
+    void* retrieve(int offset) {
+    	return (void*)((char*)storage + offset);
+    }
+
+    /** Returns a new temporary address pointing to the first location of available memory
+     *  Since we would later need to advance the offset anyway, this methods takes care of this;
+     *  that's why we pass the width of what we're gonna store in that location.
+     *
+     *  It returns the *beginning* address of the value to be stored therein (i.e. the address of the temporary)
+     */
+    TempAddress* getNewTemp(int width) {
+	   	void* begin = (void*)((char*)storage + offset);
+
+     	int oldoffset = offset;
+    	offset += width;
+
+    	return new TempAddress(oldoffset);
+   }
 };
 
 
@@ -190,6 +294,13 @@ public:
 	 */
 	TacInstr* gen(oprEnum op, Address* operand1, Address* operand2);
 
+	/** Implementation of "gen()" from the textbook.
+	 *  Basically, if generates a new TacInstr with the given parameters, 
+	 *  and stores it in the next available place in the code array
+	 *  This version accounts for using temporaries.
+	 */
+	TacInstr* gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
+
 	/** Implementation of "backpatch()" from the textbook.
 	 *  @param gotolist a list of TacInstr; each one is assumed to be a "goto"-like instruction
 	 *  @param instr the Address of the instruction (i.e. TacInstr) to be patched in the goto's in the list
@@ -203,21 +314,21 @@ public:
 /** An abstraction for the Symbol Table 
  */
 class SymTbl {
-private:
-	//Memory mem = Memory.getInstance();
+protected:
+	Memory& mem = Memory::getInstance();
+
 public:
 	SymTbl() {}
 
 	/** Pure virtual method; retrieves a variable from the symbol table.
 	 *  @param lexeme The lexeme used as a key to access the symbol table
 	 */
-	virtual void* get(const char* lexeme) = 0;
+	virtual VarAddress* get(const char* lexeme) = 0;
 
 	/** Pure virtual method; stores a variable into the symbol table.
-	 *  NEEDS TO BE MODIFIED.
 	 *  @param lexeme The lexeme used as a key to access the symbol table
 	 */
-	virtual void put(const char* lexeme) = 0;
+	virtual void put(const char* lexeme, typeName type) = 0;
 };
 
 /** A simple implementation for a symbol table. 
@@ -229,17 +340,28 @@ class SimpleArraySymTbl : public SymTbl {
 private:
 	VarAddress *sym[26];
 public:
-	/** TBD */
-	void* get(const char* lexeme);
+	/** Returns an entry, indexed by its lexeme */
+	VarAddress* get(const char* lexeme);
 
-	/** TBD */
-	void* get(char lexeme);
+	/** Returns an entry, indexed by its lexeme (1-char version) */
+	VarAddress* get(char lexeme);
 
-	/** TBD */
-	void put(const char* lexeme);
+	/** Stores a variable in the symbol table, given its lexeme and type  */
+	void put(const char* lexeme, typeName type);
 
-	/** TBD */
-	void put(char lexeme);
+	/** Stores a variable in the symbol table, given its lexeme (1-char version) and type  */
+	void put(char lexeme, typeName type);
+
+	/** Returns the value of a variable by first recovering the offset, and then accessing the memory.
+	 *  Since we don't know the type to be returned, a (void*) is used.
+	 */
+	void* getVarValue(char lexeme) {
+		int off = sym[lexeme]->getOffset();
+		return mem.retrieve(off);
+	}
+
+	/** Prints out the symbl table */
+	void printOut();
 };
 
 /* ******************************/
@@ -256,15 +378,27 @@ public:
  */
 class ExprAttr: public Attribute {
 private:
-	InstrAddress* addr;
+	Address* addr;
+	typeName type;
 
 public:
 	/** Constructor for ExprAttr; it will refer to the Address (valuenumber) of the instruction
 	 *  that (when executed) will contain the result of the entire expression. 
+	 *  It needs to know (and store) the type of the result.
 	 */
-	ExprAttr(TacInstr* addr);
+	ExprAttr(TacInstr* addr, typeName type);
 
-	/** Returns the E.addr attribute; in fact an instance of InstrAddress. */
+	/** Constructor for ExprAttr; it will refer to the Address of the variable. 
+	 *  It will infer the type from the type of the variable.
+	 */
+	ExprAttr(VarAddress* addr);
+
+	/** Constructor for ExprAttr; it will refer to a constant. 
+	 *  It will infer the type from the type of the constant.
+	 */
+	ExprAttr(ConstAddress* addr);
+
+	/** Returns the E.addr attribute */
 	Address* getAddr();
 };
 

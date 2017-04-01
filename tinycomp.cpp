@@ -39,6 +39,12 @@ ConstAddress::ConstAddress(float f) {
 	val.f = f;
 }
 
+/** Returns the constant's type (as a typeName enum)
+ */
+typeName ConstAddress::getType() {
+	return type;
+}
+
 const char* ConstAddress::toString() const {
 	char* str = (char*)malloc(10*sizeof(char));
 
@@ -54,11 +60,44 @@ const char* ConstAddress::toString() const {
 	return str;
 }
 
-/* 
- * VarAddress 
+/** Constructor: creates a variable address from its id (assuming only 1-char id's).
  */
-VarAddress::VarAddress(char v) {
+VarAddress::VarAddress(char v, typeName t, int o) {
 	lexeme= v;
+
+	type = t;
+
+	switch(type) {
+		case intType:
+			width = sizeof(int);
+			break;
+		case floatType:
+			width = sizeof(float);
+			break;
+		default:
+			/* should never reach here */
+			break;
+	}
+
+	offset = o;
+}
+
+/** Returns the variable's type (as a typeName enum)
+ */
+typeName VarAddress::getType() {
+	return type;
+}
+
+/** Returns the variable's width, which depends on its type
+ */
+int VarAddress::getWidth() {
+	return width;
+}
+
+/** Returns the pointer to the memory location holding the variable's value
+ */
+int VarAddress::getOffset() {
+	return offset;
 }
 
 const char* VarAddress::toString() const {
@@ -68,6 +107,33 @@ const char* VarAddress::toString() const {
 
 	return str;
 }
+
+
+/** Constructor: creates a temporary at the specified offset in memory
+	 */
+TempAddress::TempAddress(int offset) {
+    // update the counter after using the old value as the "name" of this temporary
+	name = counter++;
+
+	this->offset = offset;
+}
+
+/** Returns the pointer to the memory location holding the temporary
+ */
+int TempAddress::getOffset() {
+	return offset;
+}
+
+/** Concrete method for printing a TempAddress;
+ *  it's a concrete implementation of the corresponding abstract method in Address
+ */
+const char* TempAddress::toString() const {
+	char* str = (char*)malloc(5*sizeof(char));;
+	sprintf(str, "t%d", name);
+	
+	return str;
+}
+
 
 /* 
  * InstrAddress 
@@ -90,6 +156,7 @@ const char* InstrAddress::toString() const {
 
 /* TargetCode 
  */
+
 TacInstr* TargetCode::gen(TacInstr* instr) {
 	instr->setValueNumber(nextInstr);
 	codeArray[nextInstr] = instr;
@@ -97,6 +164,14 @@ TacInstr* TargetCode::gen(TacInstr* instr) {
 	nextInstr++;
 
 	return instr;
+}
+
+TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2) {
+	return gen(new TacInstr(op, operand1, operand2, NULL));
+}
+
+TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp) {
+	return gen(new TacInstr(op, operand1, operand2, temp));
 }
 
 TargetCode::TargetCode() {
@@ -120,12 +195,8 @@ void TargetCode::backpatch(list<TacInstr*> l, TacInstr* i) {
 	return;
 }
 
-TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2) {
-	return gen(new TacInstr(op, operand1, operand2));
-}
-
 void TargetCode::printOut() {
-	for (int i=0; i< 1000 && codeArray[i] != NULL; i++) {
+	for (int i=0; i< 999 && codeArray[i] != NULL; i++) {
 		cout << codeArray[i] << "\n";
 	}
 }
@@ -141,27 +212,75 @@ void TargetCode::printOut() {
 // 	virtual void put(const char* lexeme) = 0;
 // };
 
-/* SimpleArraySyTbl
+/** Returns an entry from the Symbol table, using a lexeme (a string) as the key.
+ *  In this simple implementation, it just falls back to the 1-char lexeme assumption
+ *  (only the first char of the string is used)
  */
-void* SimpleArraySymTbl::get(const char* lexeme) {
+VarAddress* SimpleArraySymTbl::get(const char* lexeme) {
 	return get(lexeme[0]);
 }	
 
-void* SimpleArraySymTbl::get(char lexeme) {
+/** Returns an entry from the Symbol table, assuming that all lexemes are just 1-char long
+ */
+VarAddress* SimpleArraySymTbl::get(char lexeme) {
 	int index = lexeme - 'a';
 
 	return sym[index];
 }
 
-void SimpleArraySymTbl::put(const char* lexeme) {
-	put(lexeme[0]);
+/** Stores an entry in the Symbol table, using a lexeme (a string) as the key
+ *  In this simple implementation, it just falls back to the 1-char lexeme assumption
+ *  (only the first char of the string is used)
+ */
+void SimpleArraySymTbl::put(const char* lexeme, typeName type) {
+	put(lexeme[0], type);
 }
 
-void SimpleArraySymTbl::put(char lexeme) {
+/** Stores an entry in the Symbol table, assuming that all lexemes are just 1-char long
+ */
+void SimpleArraySymTbl::put(char lexeme, typeName type) {
 	int index = lexeme -'a';
 
-	VarAddress* a = new VarAddress(lexeme);
+	int offset;
+
+	// we store variables in memory, initializing them with a default value depending on their type
+	switch(type) {
+		case intType: {
+			int intVal = 0;
+			offset = mem.store(&intVal, sizeof(int));
+			}
+			break;
+		case floatType: {
+			float floatVal = 0;
+			offset = mem.store(&floatVal, sizeof(float));
+			}
+			break;
+		default:
+			break;		
+	}
+
+	VarAddress* a = new VarAddress(lexeme, type, offset);
 	sym[index] = a;
+}
+
+void SimpleArraySymTbl::printOut() {
+	for (int i = 0; i < 26; ++i)
+	{
+		if (sym[i] != NULL) {
+			switch (sym[i]->getType()) {
+				case intType:
+					cout << i << ") : " << sym[i] << " (int)   - offset = " << sym[i]->getOffset() << endl;
+					break;
+				case floatType:
+					cout << i << ") : " << sym[i] << " (float) - offset = " << sym[i]->getOffset() << endl;
+					break;
+				default:
+					/* should not occur */
+					cout << i << ") : " << sym[i] << endl;
+					break;
+			}
+		}
+	}
 }
 
 /* TacInstr
@@ -174,11 +293,13 @@ void TacInstr::setValueNumber(int vn) {
 	valueNumber = new InstrAddress(vn);
 }
 
-TacInstr::TacInstr(oprEnum op, Address* operand1, Address* operand2) {
+TacInstr::TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp) {
 	this->valueNumber = NULL;
 	this->op = op;
 	this->operand1 = operand1;
 	this->operand2 = operand2;
+
+	this->temp = temp;
 }
 
 InstrAddress* TacInstr::getValueNumber() {
@@ -197,10 +318,25 @@ void TacInstr::patch(TacInstr* i) {
 /* ATTRIBUTES FOR NONTERMINALS */
 /*******************************/
 
-/* ExprAttr
-*/
-ExprAttr::ExprAttr(TacInstr* addr) {
+/** Constructor for ExprAttr, when the expression actually refers to an instruction
+ */
+ExprAttr::ExprAttr(TacInstr* addr, typeName type) {
 	this->addr = addr->getValueNumber();
+	this->type = type;
+}
+
+/** Constructor for ExprAttr, when the expression refers to a variable in the symbol table
+ */
+ExprAttr::ExprAttr(VarAddress* addr) {
+	this->addr = addr;
+	this->type = addr->getType();
+}
+
+/** Constructor for ExprAttr, when the expression refers to a constant
+ */
+ExprAttr::ExprAttr(ConstAddress* addr) {
+	this->addr = addr;	
+	this->type = addr->getType();
 }
 
 Address* ExprAttr::getAddr(){
@@ -291,6 +427,8 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 			assert(instr->operand1 != NULL);
 			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->operand1;			
 		case addOpr:
+			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
+			return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << " " << opTable[instr->op] << " " << instr->operand2;
 		case mulOpr:
 		case condJmpOpr:
 		case UNKNOWNOpr:
@@ -298,4 +436,3 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 			return out << setw(4) << instr->valueNumber << ": " << "???";
 	}
 }
-

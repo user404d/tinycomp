@@ -15,14 +15,17 @@ using namespace std;
 int yylex(void);
 void yyerror(const char *s);
 
-/* Global variables */
-SymTbl *sym = new SimpleArraySymTbl();
-TargetCode *code = new TargetCode();
-
 const char* typestrs[] = {
 	"integer",
 	"floating point"
 };
+
+int TempAddress::counter = 0;
+
+/* Global variables */
+Memory& mem = Memory::getInstance();
+SimpleArraySymTbl *sym = new SimpleArraySymTbl();
+TargetCode *code = new TargetCode();
 
 %}
 
@@ -60,7 +63,18 @@ const char* typestrs[] = {
 prog:	decls stmt_list 		{ 
 									TacInstr *i = code->gen(UNKNOWNOpr, NULL, NULL); 
 									code->backpatch(((StmtAttr *)$2)->getNextlist(), i);
+
+									/* ====== */
+									cout << "*********" << endl;
+									cout << "Size of int: " << sizeof(int) << endl;
+									cout << "Size of float: " << sizeof(float) << endl;
+									cout << "*********" << endl;
+									cout << "== Symbol Table ==" << endl;
+									sym->printOut();
+									cout << endl;
+									cout << "== Output (3-addr code) ==" << endl;
 									code->printOut(); 
+									/* ====== */
 								}
 	;
 
@@ -71,8 +85,13 @@ decls:	decls decl
 decl: TYPE id_list ';'
 	;
 
-id_list:	id_list ',' ID 	{cout << "Recognizing var " << $3 << " of type " << typestrs[$<typeLexeme>0] << "\n"; }
-	   | 	ID 				{cout << "Recognizing var " << $1 << " of type " << typestrs[$<typeLexeme>0] << "\n"; }
+id_list:	id_list ',' ID 	{
+								sym->put($3, $<typeLexeme>0);
+								//cout << "Recognizing var " << $3 << " of type " << typestrs[$<typeLexeme>0] << "\n"; 
+							}
+	   | 	ID 				{
+	   							sym->put($1, $<typeLexeme>0);
+	   						}
 	;
 
 stmt_list:
@@ -93,7 +112,8 @@ stmt:
 				$$ = new StmtAttr();
 			}
 	| ID '=' expr	{
-				code->gen(copyOpr, new VarAddress($1), ((ExprAttr*)$3)->getAddr());
+				VarAddress* var = sym->get($1);
+				code->gen(copyOpr, var, ((ExprAttr*)$3)->getAddr());
 
 				$$ = new StmtAttr();
 			}
@@ -117,14 +137,41 @@ stmt:
 
 expr:
 	INTEGER {
-				Address *ia = new ConstAddress($1);
-				// generate a copy instr where to store the integer
-				TacInstr* i = code->gen(copyOpr, ia, NULL);
+				ConstAddress *ia = new ConstAddress($1);
+				// // generate a copy instr where to store the integer constant
+				// TacInstr* i = code->gen(copyOpr, ia, NULL);
+				// 
+				// $$ = new ExprAttr(i);
 
-				$$ = new ExprAttr(i);
+				$$ = new ExprAttr(ia);
+			}
+	| FLOAT {
+				ConstAddress *ia = new ConstAddress($1);
+				// // generate a copy instr where to store the float constant
+				// // this is not the best choice, as it produces a lot of needless temporaries
+				// TacInstr* i = code->gen(copyOpr, ia, NULL);
+				// 	
+				// $$ = new ExprAttr(i);
+
+				$$ = new ExprAttr(ia);
 			}
 	| ID 	{
-				Address *ia = new ConstAddress($1);
+				VarAddress *ia = sym->get($1);
+
+				$$ = new ExprAttr(ia);
+			}
+	| expr '+' expr {
+				// Note: I'm not hadnling all cases of type checking here; needs to be completed
+
+				// if (ExprAttr*)$1) == int && (ExprAttr*)$3) == int then ...
+				TempAddress* temp = mem.getNewTemp(sizeof(int));
+
+				TacInstr* i = code->gen(addOpr, ((ExprAttr*)$1)->getAddr(), ((ExprAttr*)$3)->getAddr(), temp);
+
+				$$ = new ExprAttr(i, intType);
+
+				// else ... (all other type combinations should be considered here)
+				// ...
 			}
 	;
 

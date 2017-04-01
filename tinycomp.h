@@ -10,7 +10,10 @@
 * @date 3/13/2017 
 */
 
-/** Type system; each native data type is stored as a value in this enumeration. */
+/** Type system; each native data type is stored as a value in this enumeration. 
+ *  Note that for structured types we need a more complex structure; also, I am 
+ *  not explicitly accounting for a type hierarchy here.
+ */
 typedef enum {
 	intType, 	/*!< integer type */
 	floatType	/*!< floating point type */

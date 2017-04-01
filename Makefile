@@ -27,7 +27,7 @@ lex.yy.c: $(firstword $(LEX_FILES))
 library: $(OBJ_FILES)
 
 compiler: library
-	g++ $(OBJ_FILES) -o tinycomp
+	g++ -std=c++11 $(OBJ_FILES) -o tinycomp
 
 docs: tinycomp.hpp tinycomp.h
 	doxygen tinycomp.doxy
