@@ -143,21 +143,21 @@ void TargetCode::printOut() {
 
 /* SimpleArraySyTbl
  */
-void* SimpleArraySyTbl::get(const char* lexeme) {
+void* SimpleArraySymTbl::get(const char* lexeme) {
 	return get(lexeme[0]);
 }	
 
-void* SimpleArraySyTbl::get(char lexeme) {
+void* SimpleArraySymTbl::get(char lexeme) {
 	int index = lexeme - 'a';
 
 	return sym[index];
 }
 
-void SimpleArraySyTbl::put(const char* lexeme) {
+void SimpleArraySymTbl::put(const char* lexeme) {
 	put(lexeme[0]);
 }
 
-void SimpleArraySyTbl::put(char lexeme) {
+void SimpleArraySymTbl::put(char lexeme) {
 	int index = lexeme -'a';
 
 	VarAddress* a = new VarAddress(lexeme);

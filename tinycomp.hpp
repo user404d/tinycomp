@@ -225,7 +225,7 @@ public:
  *  so the table is just an array with 26 entries.
  *  NOTE: this class needs to be defined yet.
  */
-class SimpleArraySyTbl : public SymTbl {
+class SimpleArraySymTbl : public SymTbl {
 private:
 	VarAddress *sym[26];
 public:

@@ -16,7 +16,7 @@ int yylex(void);
 void yyerror(const char *s);
 
 /* Global variables */
-SymTbl *sym = new SimpleArraySyTbl();
+SymTbl *sym = new SimpleArraySymTbl();
 TargetCode *code = new TargetCode();
 
 const char* typestrs[] = {
@@ -125,7 +125,6 @@ expr:
 			}
 	| ID 	{
 				Address *ia = new ConstAddress($1);
-
 			}
 	;
 
