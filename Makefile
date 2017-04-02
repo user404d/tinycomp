@@ -1,3 +1,9 @@
+#############################
+# Makefile for Tinycomp     #
+# A toy compiler for CS5500 #
+#############################
+SHELL := /bin/bash
+
 LEX_FILES = $(wildcard *.l)
 BISON_FILES = $(wildcard *.y)
 TAB_FILES = $(BISON_FILES:%.y=%.tab.c)
@@ -5,7 +11,7 @@ TAB_H_FILES = $(BISON_FILES:%.y=%.tab.h)
 OBJ_FILES = $(TAB_FILES:%.tab.c=%.tab.o) lex.yy.o tinycomp.o
 
 CC = g++
-CPPFLAGS = -x c++
+CPPFLAGS = -std=c++11 -x c++
 
 .PHONY: all lexcheck bisoncheck
 
@@ -25,13 +31,12 @@ lex.yy.c: $(firstword $(LEX_FILES))
 	bison -d $<
 
 library: $(OBJ_FILES)
-
+	
 compiler: library
-	g++ -std=c++11 $(OBJ_FILES) -o tinycomp
+	$(CC) -std=c++11  $(OBJ_FILES) -o tinycomp
 
 docs: tinycomp.hpp tinycomp.h
 	doxygen tinycomp.doxy
 
 clean:
 	rm lex.yy.c $(TAB_H_FILES) *.o tinycomp
-	rm -r docs/*
