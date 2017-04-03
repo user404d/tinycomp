@@ -1,0 +1,9 @@
+int a;
+float b;
+
+stat;
+while(true) {
+  stat;
+  a = 3;
+  stat;
+};

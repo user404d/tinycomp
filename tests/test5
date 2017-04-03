@@ -1,0 +1,7 @@
+int a, b, c;
+float f;
+
+stat;
+a = 3;
+f = 3.4;
+b = a;

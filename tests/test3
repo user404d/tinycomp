@@ -1,0 +1,12 @@
+int a;
+float b;
+
+stat;
+while(true) {
+	stat;
+	stat;
+};
+
+while(true || false) {
+	stat; stat; stat;
+};
