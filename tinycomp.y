@@ -69,7 +69,7 @@ TargetCode *code = new TargetCode();
 
 %%
 prog:	decls stmt_list 		{ 
-									TacInstr *i = code->gen(UNKNOWNOpr, NULL, NULL); 
+									TacInstr *i = code->gen(haltOpr, NULL, NULL); 
 									code->backpatch(((StmtAttr *)$2)->getNextlist(), i);
 
 									/* ====== */
