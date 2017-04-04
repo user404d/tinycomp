@@ -7,6 +7,11 @@ void yyerror(const char *);
 %}
 
 %option noyywrap
+
+/* regular definitions */
+intconst        0|[1-9][0-9]* 
+floatconst      {intconst}\.[0-9]*
+
 %%
 
 "int"       {
@@ -47,17 +52,12 @@ void yyerror(const char *);
                 return ID;
             }
 
-0           {
+{intconst}  {
                 yylval.iValue = atoi(yytext);
                 return INTEGER;
             }
 
-[1-9][0-9]* {
-                yylval.iValue = atoi(yytext);
-                return INTEGER;
-            }
-
-[0-9]\.[0-9]* {
+{floatconst} {
                 yylval.fValue = atof(yytext);
                 return FLOAT;
             }

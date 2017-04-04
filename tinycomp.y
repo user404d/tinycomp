@@ -15,6 +15,7 @@ using namespace std;
 int yylex(void);
 void yyerror(const char *s);
 
+/* Mapping of types to their names */
 const char* typestrs[] = {
 	"integer",
 	"floating point"
@@ -29,12 +30,19 @@ TargetCode *code = new TargetCode();
 
 %}
 
+/* This is the union that defines the type for var yylval,
+ * which corresponds to 'lexval' in our textboox parlance.
+ */
 %union{
+	/* tokens for constants */
 	int iValue;					/* integer value */
 	float fValue;				/* float value */
+
+	/* tokens for other lexemes (var id's and generic lexemes) */
 	char idLexeme;				/* identifiers */
 	typeName typeLexeme;		/* lexemes for type id's */
 
+	/* types for other syntactical elements: typically, attributes of the symbols */
 	Attribute* attrs;			/* attributes for nonterminals */
 	int inhAttr;    			/* inherited attribute storing address */
 }
@@ -138,20 +146,11 @@ stmt:
 expr:
 	INTEGER {
 				ConstAddress *ia = new ConstAddress($1);
-				// // generate a copy instr where to store the integer constant
-				// TacInstr* i = code->gen(copyOpr, ia, NULL);
-				// 
-				// $$ = new ExprAttr(i);
 
 				$$ = new ExprAttr(ia);
 			}
 	| FLOAT {
 				ConstAddress *ia = new ConstAddress($1);
-				// // generate a copy instr where to store the float constant
-				// // this is not the best choice, as it produces a lot of needless temporaries
-				// TacInstr* i = code->gen(copyOpr, ia, NULL);
-				// 	
-				// $$ = new ExprAttr(i);
 
 				$$ = new ExprAttr(ia);
 			}
@@ -161,17 +160,18 @@ expr:
 				$$ = new ExprAttr(ia);
 			}
 	| expr '+' expr {
-				// Note: I'm not hadnling all cases of type checking here; needs to be completed
+				// Note: I'm not handling all cases of type checking here; needs to be completed
 
-				// if (ExprAttr*)$1) == int && (ExprAttr*)$3) == int then ...
-				TempAddress* temp = mem.getNewTemp(sizeof(int));
+				if ( ((ExprAttr*)$1)->getType() == intType && ((ExprAttr*)$3)->getType() == intType ) {
+					TempAddress* temp = mem.getNewTemp(sizeof(int));
 
-				TacInstr* i = code->gen(addOpr, ((ExprAttr*)$1)->getAddr(), ((ExprAttr*)$3)->getAddr(), temp);
+					TacInstr* i = code->gen(addOpr, ((ExprAttr*)$1)->getAddr(), ((ExprAttr*)$3)->getAddr(), temp);
 
-				$$ = new ExprAttr(i, intType);
-
+					$$ = new ExprAttr(i, intType);
+				} else {
 				// else ... (all other type combinations should be considered here)
-				// ...
+				// ...					
+				}
 			}
 	;
 

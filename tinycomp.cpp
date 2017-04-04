@@ -14,6 +14,7 @@ using namespace std;
 
 const char* opTable[] = {
 	"UNKNOWN",
+	"HALT",
 	"=",
 	"+",
 	"*",
@@ -429,10 +430,13 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 		case addOpr:
 			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
 			return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << " " << opTable[instr->op] << " " << instr->operand2;
-		case mulOpr:
-		case condJmpOpr:
-		case UNKNOWNOpr:
+		case haltOpr:
+			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op];
+		case mulOpr: /* TBD */
+		case condJmpOpr: /* TBD */
+		case UNKNOWNOpr: /* TBD */
 		default:
 			return out << setw(4) << instr->valueNumber << ": " << "???";
+	}
 	}
 }
