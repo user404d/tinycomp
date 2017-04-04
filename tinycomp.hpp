@@ -397,9 +397,18 @@ public:
 	 *  It will infer the type from the type of the constant.
 	 */
 	ExprAttr(ConstAddress* addr);
+	
+	/** Constructor for ExprAttr; it will refer to a temporary,
+	 *  supposedly holding some variable. 
+	 *  The type cannot be inferred, in ths case, so it must be explicitly provided.
+	 */
+	ExprAttr(TempAddress* addr, typeName type);
 
 	/** Returns the E.addr attribute */
 	Address* getAddr();
+
+	/** Returns the E.type attribute */
+	typeName getType();
 };
 
 /** Implementation of attribute for grammar symbol cond: boolean expressions 

@@ -22,6 +22,7 @@ typedef enum {
 /** Enums for 3-addr code - operators */
 typedef enum { 
 	UNKNOWNOpr, /*!< this is the default, for an unknown operator (it should not occur) */
+	haltOpr, 	/*!< return control to the operating system */
 	copyOpr, 	/*!< the assignment operator */
 	addOpr, 	/*!< the addition operator */
 	mulOpr, 	/*!< the multiplication operator */

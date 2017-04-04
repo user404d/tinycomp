@@ -340,8 +340,21 @@ ExprAttr::ExprAttr(ConstAddress* addr) {
 	this->type = addr->getType();
 }
 
+/** Constructor for ExprAttr; it will refer to a temporary,
+ *  supposedly holding some variable. 
+ *  The type cannot be inferred, in ths case, so it must be explicitly provided.
+ */
+ExprAttr::ExprAttr(TempAddress* addr, typeName type) {
+	this->addr = addr;	
+	this->type = type;	
+}
+
 Address* ExprAttr::getAddr(){
 	return addr;
+}
+
+typeName ExprAttr::getType() {
+	return type;
 }
 
 /* BoolAttr
@@ -437,6 +450,5 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 		case UNKNOWNOpr: /* TBD */
 		default:
 			return out << setw(4) << instr->valueNumber << ": " << "???";
-	}
 	}
 }
