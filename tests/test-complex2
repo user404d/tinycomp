@@ -1,0 +1,17 @@
+int a, b, c;
+// This is the declaration of a complex variable: it won't compile
+// until you modify the code
+complex d;
+float f;
+float g;
+
+stat;
+a = 3;
+f = 3.4;
+b = a;
+
+// this must initialize a complex constant, and assign it to var d
+d = 1+2i;
+
+c = 1 + 2;
+a = c +3;
