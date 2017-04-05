@@ -9,7 +9,7 @@ void yyerror(const char *);
 %option noyywrap
 
 /* regular definitions */
-intconst        0|[1-9][0-9]* 
+intconst        0|[1-9][0-9]*
 floatconst      {intconst}\.[0-9]*
 
 %%
@@ -66,6 +66,7 @@ floatconst      {intconst}\.[0-9]*
                 return *yytext;
              }
 
+"//".*          { /* Skip 1-line comments */ }
 
 [ \t\n]+        ;       /* ignore whitespace */
 

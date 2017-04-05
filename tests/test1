@@ -1,6 +1,7 @@
 int a, b, c;
 float f;
 
+// this is just a fake statement
 stat;
 stat;
 stat;

@@ -64,7 +64,7 @@ const char* ConstAddress::toString() const {
 /** Constructor: creates a variable address from its id (assuming only 1-char id's).
  */
 VarAddress::VarAddress(char v, typeName t, int o) {
-	lexeme= v;
+	lexeme = v;
 
 	type = t;
 
@@ -131,13 +131,13 @@ int TempAddress::getOffset() {
 const char* TempAddress::toString() const {
 	char* str = (char*)malloc(5*sizeof(char));;
 	sprintf(str, "t%d", name);
-	
+
 	return str;
 }
 
 
-/* 
- * InstrAddress 
+/*
+ * InstrAddress
  */
 InstrAddress::InstrAddress(int vn) {
 	arrayCodeIndex = vn;
@@ -155,7 +155,7 @@ const char* InstrAddress::toString() const {
 /* COMPILER DATA STRUCTURES */
 /****************************/
 
-/* TargetCode 
+/* TargetCode
  */
 
 TacInstr* TargetCode::gen(TacInstr* instr) {
@@ -181,7 +181,7 @@ TargetCode::TargetCode() {
 
 TacInstr* TargetCode::getInstr(int i) {
 	return codeArray[i];
-} 
+}
 
 int TargetCode::getNextInstr() {
 	return nextInstr;
@@ -202,7 +202,7 @@ void TargetCode::printOut() {
 	}
 }
 
-/* An abstraction for the Symbol Table 
+/* An abstraction for the Symbol Table
  */
 // class SymTbl {
 // private:
@@ -219,7 +219,7 @@ void TargetCode::printOut() {
  */
 VarAddress* SimpleArraySymTbl::get(const char* lexeme) {
 	return get(lexeme[0]);
-}	
+}
 
 /** Returns an entry from the Symbol table, assuming that all lexemes are just 1-char long
  */
@@ -257,7 +257,7 @@ void SimpleArraySymTbl::put(char lexeme, typeName type) {
 			}
 			break;
 		default:
-			break;		
+			break;
 	}
 
 	VarAddress* a = new VarAddress(lexeme, type, offset);
@@ -336,17 +336,17 @@ ExprAttr::ExprAttr(VarAddress* addr) {
 /** Constructor for ExprAttr, when the expression refers to a constant
  */
 ExprAttr::ExprAttr(ConstAddress* addr) {
-	this->addr = addr;	
+	this->addr = addr;
 	this->type = addr->getType();
 }
 
 /** Constructor for ExprAttr; it will refer to a temporary,
- *  supposedly holding some variable. 
+ *  supposedly holding some variable.
  *  The type cannot be inferred, in ths case, so it must be explicitly provided.
  */
 ExprAttr::ExprAttr(TempAddress* addr, typeName type) {
-	this->addr = addr;	
-	this->type = type;	
+	this->addr = addr;
+	this->type = type;
 }
 
 Address* ExprAttr::getAddr(){
@@ -439,7 +439,7 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op];
 		case jmpOpr:
 			assert(instr->operand1 != NULL);
-			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->operand1;			
+			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->operand1;
 		case addOpr:
 			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
 			return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << " " << opTable[instr->op] << " " << instr->operand2;
