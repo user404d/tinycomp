@@ -322,6 +322,7 @@ public:
 
 	/** Pure virtual method; stores a variable into the symbol table.
 	 *  @param lexeme The lexeme used as a key to access the symbol table
+	 *  @param type The type of the lexeme 
 	 */
 	virtual void put(const char* lexeme, typeName type) = 0;
 
