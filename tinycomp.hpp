@@ -247,14 +247,6 @@ public:
    */
   TempAddress* getNewTemp(int width);
 
-	 list<TempAddress*> getTemporaries() {
-		 return temporaries;
-	 }
-
-	 list<int> getTempWidths(){
-		 return tempwidths;
-	 }
-
 	 /** Prints out a dump of the memory.
 	  *  It prints the content of each memory location in hex format.
 		*  Not very useful for you, since the memory will be filled only
