@@ -1,5 +1,6 @@
 %{
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
 #include <stdio.h>
@@ -14,6 +15,8 @@ using namespace std;
 /* Prototypes - for lex */
 int yylex(void);
 void yyerror(const char *s);
+
+void printout();
 
 /* Mapping of types to their names */
 const char* typestrs[] = {
@@ -63,26 +66,19 @@ TargetCode *code = new TargetCode();
 %nonassoc UMINUS
 
 %type <attrs>expr
-%type <attrs>stmt 
-%type <attrs>stmt_list 
+%type <attrs>stmt
+%type <attrs>stmt_list
 %type <attrs>cond
 
 %%
-prog:	decls stmt_list 		{ 
-									TacInstr *i = code->gen(haltOpr, NULL, NULL); 
+prog:	decls stmt_list 		{
+									// add the final 'halt' instruction
+									TacInstr *i = code->gen(haltOpr, NULL, NULL);
 									code->backpatch(((StmtAttr *)$2)->getNextlist(), i);
 
-									/* ====== */
-									cout << "*********" << endl;
-									cout << "Size of int: " << sizeof(int) << endl;
-									cout << "Size of float: " << sizeof(float) << endl;
-									cout << "*********" << endl;
-									cout << "== Symbol Table ==" << endl;
-									sym->printOut();
-									cout << endl;
-									cout << "== Output (3-addr code) ==" << endl;
-									code->printOut(); 
-									/* ====== */
+									// print out the output IR, as well as some other info
+									// useful for debugging
+									printout();
 								}
 	;
 
@@ -94,19 +90,18 @@ decl: TYPE id_list ';'
 	;
 
 id_list:	id_list ',' ID 	{
-								sym->put($3, $<typeLexeme>0);
-								//cout << "Recognizing var " << $3 << " of type " << typestrs[$<typeLexeme>0] << "\n"; 
-							}
+														sym->put($3, $<typeLexeme>0);
+													}
 	   | 	ID 				{
-	   							sym->put($1, $<typeLexeme>0);
-	   						}
+	   								sym->put($1, $<typeLexeme>0);
+	   							}
 	;
 
 stmt_list:
           stmt ';'          { $$ = $1; }
-        | stmt_list 
-          {$<inhAttr>$ = code->getNextInstr();} 
-          stmt ';'       	{ 
+        | stmt_list
+          {$<inhAttr>$ = code->getNextInstr();}
+          stmt ';'       	{
 				code->backpatch(((StmtAttr *)$1)->getNextlist(), code->getInstr($<inhAttr>2));
 
 				$$ = $3;
@@ -114,7 +109,7 @@ stmt_list:
         ;
 
 stmt:
-	STAT 	{ 
+	STAT 	{
 				code->gen(fakeOpr, NULL, NULL);
 
 				$$ = new StmtAttr();
@@ -125,10 +120,10 @@ stmt:
 
 				$$ = new StmtAttr();
 			}
-	| WHILE '(' 
-	  {$<inhAttr>$ = code->getNextInstr();} 
-	  cond ')' 
-	  {$<inhAttr>$ = code->getNextInstr();}  
+	| WHILE '('
+	  {$<inhAttr>$ = code->getNextInstr();}
+	  cond ')'
+	  {$<inhAttr>$ = code->getNextInstr();}
 	  '{' stmt_list '}' {
 				code->backpatch(((BoolAttr *)$4)->getTruelist(), code->getInstr($<inhAttr>6));
 
@@ -170,7 +165,7 @@ expr:
 					$$ = new ExprAttr(i, intType);
 				} else {
 				// else ... (all other type combinations should be considered here)
-				// ...					
+				// ...
 				}
 			}
 	;
@@ -202,10 +197,30 @@ cond:
 				attrs->addFalse(((BoolAttr *)$4)->getFalselist());
 
 				$$ = attrs;
-			} 
+			}
 	;
 
 %%
+void printout() {
+	/* ====== */
+	cout << "*********" << endl;
+	cout << "Size of int: " << sizeof(int) << endl;
+	cout << "Size of float: " << sizeof(float) << endl;
+	cout << "*********" << endl;
+	cout << endl;
+	cout << "== Symbol Table ==" << endl;
+	sym->printOut();
+	cout << endl;
+	cout << "== Memory Dump ==" << endl;
+	// mem.hexdump();
+	mem.printOut(sym);
+	cout << endl;
+	cout << endl;
+	cout << "== Output (3-addr code) ==" << endl;
+	code->printOut();
+	/* ====== */
+}
+
 
 void yyerror(const char *s) {
     fprintf(stderr, "%s\n", s);

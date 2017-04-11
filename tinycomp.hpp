@@ -3,11 +3,11 @@
 
 /**
 * @file tinycomp.hpp
-* @brief This header file contains the support code for 
+* @brief This header file contains the support code for
 * the translator of tinycomp.
 *
 * @author Marco Ortolani
-* @date 3/13/2017 
+* @date 3/13/2017
 */
 
 
@@ -39,7 +39,7 @@ protected:
 	virtual const char* toString() const = 0;
 };
 
-/** A specialization of Address to hold a constant 
+/** A specialization of Address to hold a constant
  */
 class ConstAddress: public Address {
 private:
@@ -54,7 +54,7 @@ public:
 	ConstAddress(int i);
 
 	/** Constructor for a float constant. */
-	ConstAddress(float f); 
+	ConstAddress(float f);
 
 	/** Returns the constant's type (as a typeName enum)
 	 */
@@ -63,10 +63,10 @@ public:
 	/** Concrete method for printing a ConstAddress;
 	 *  it's a concrete implementation of the corresponding abstract method in Address
 	 */
-	const char* toString() const; 
+	const char* toString() const;
 };
 
-/** A specialization of Address to hold a variable 
+/** A specialization of Address to hold a variable
  */
 class VarAddress: public Address {
 private:
@@ -101,7 +101,7 @@ public:
 	const char* toString() const;
 };
 
-/** A specialization of Address to hold a temporary 
+/** A specialization of Address to hold a temporary
  */
 class TempAddress: public Address {
 private:
@@ -110,7 +110,7 @@ private:
 	int name;
 
 	int offset;
-public: 
+public:
 	/** Constructor: creates a temporary at the specified offset in memory
 	 */
 	TempAddress(int offset);
@@ -125,7 +125,7 @@ public:
 	const char* toString() const;
 };
 
-/** A specialization of Address to hold an instruction. 
+/** A specialization of Address to hold an instruction.
  */
 class InstrAddress: public Address {
 private:
@@ -134,7 +134,7 @@ private:
 	friend std::ostream& operator<<(std::ostream &, const InstrAddress *);
 
 public:
-	/** Constructor to initialize an InstrAddress from an index of the array code. 
+	/** Constructor to initialize an InstrAddress from an index of the array code.
 	 *  @param vn The index of the TargetCode array, representing a valuenumber.
 	 */
 	InstrAddress(int vn);
@@ -153,7 +153,7 @@ public:
  */
 class TacInstr {
 private:
-	InstrAddress* valueNumber; 
+	InstrAddress* valueNumber;
 	oprEnum op;
 	Address* operand1;
 	Address* operand2;
@@ -165,7 +165,7 @@ private:
 
 	friend std::ostream& operator<<(std::ostream &, const TacInstr *);
 public:
-	/** Constructor of a 3-address code instruction. The result is internally stored 
+	/** Constructor of a 3-address code instruction. The result is internally stored
 	 * as an InstrAddress representing the value number (e.g corresponding to an index to the code array)
 	 * @param op The operator for this instruction, as an oprEnum
 	 * @param operand1 The first operand, as a generic Address
@@ -177,7 +177,7 @@ public:
 	/** Returns the enum representing the operator of this specific instruction */
 	oprEnum getOp() const;
 
-	/** Returns the InstrAddress representing the value number */	
+	/** Returns the InstrAddress representing the value number */
 	InstrAddress* getValueNumber();
 
 	/** For backpathcing "goto"-like instructions */
@@ -188,83 +188,82 @@ public:
 /*  COMPILER DATA STRUCTURES */
 /* ***************************/
 
+class SymTbl;
+
 /** A simplified abstraction for the memory allocated to the compiler.
  */
 class Memory {
 private:
 	/* our (simulation of the) actual memory */
-	void* storage;
+	unsigned char* storage;
 
 	/* the pointer to the next block of free memory */
-	int offset; 
+	int offset;
+
+	/* Convenience variables to keep track of temporaries
+	   and their 'width', in order to print them out */
+	list<TempAddress*> temporaries;
+	list<int> tempwidths;
 
 	/** Private Constructor
 	 */
-	Memory() {
-		storage = (void*)malloc(1000000 * sizeof(void*) );
-		offset = 0;
-	}
+	Memory();
 
 	// Stop the compiler from generating methods of copy the object
-    Memory(Memory const& copy);            // Not to be implemented
-    Memory& operator=(Memory const& copy); // Not to be implemented
+  Memory(Memory const& copy);            // Not to be implemented
+  Memory& operator=(Memory const& copy); // Not to be implemented
 public:
+	/** The size of our memory in bytes.
+	 *  It's set to a very small value to keep visualization of the
+	 *  memory dump clean. Increase as needed.
+	 */
+	static const int MEMSIZE = 128;
+
 	/** As Memory is implemented as a singleton, its constructor is private.
 	 *  This method is the only way to obtain an instance of Memory.
 	 *  It is guaranteed that it will return always the same instance.
 	 */
-    static Memory& getInstance()
-    {
-        // The only instance
-        // Guaranteed to be lazy initialized
-        // Guaranteed that it will be destroyed correctly
-        static Memory instance;
-        return instance;
-    }
+  static Memory& getInstance();
 
-    /** Store the bytes pointed to by val in memory.
-     *  Note that we don't pass the type of the variable to be stored, as this 
-     *  has no relevance for the memory.
-     *
-     *	Returns the *beginning* address of the value just stored.
-     */
-    int store(void* val, int width) {
-    	/* offset tells us where free memory begins 
-    	 * Unfortunaltely, arithmetic on void pointers is not allowed in C,
-    	 * so I need to cast to char, and cast back
-    	 */
-    	void* begin = (void*)((char*)storage + offset);
+  /** Store the bytes pointed to by val in memory.
+   *  Note that we don't pass the type of the variable to be stored, as this
+   *  has no relevance for the memory.
+   *
+   *	Returns the *beginning* address of the value just stored.
+   */
+  int store(void* val, int width);
 
-    	memcpy(begin, val, width);
+  /** Returns the *beginning* address of some value, supposedly stored in memory.
+   *  Note that we have no clue about the type of such value, or it's width.
+   *  They must be "computed/retrieved" externally.
+   */
+  void* retrieve(int offset);
 
-    	int oldoffset = offset;
-    	offset += width;
+  /** Returns a new temporary address pointing to the first location of available memory
+   *  Since we would later need to advance the offset anyway, this methods takes care of this;
+   *  that's why we pass the width of what we're gonna store in that location.
+   *
+   *  It returns the *beginning* address of the value to be stored therein (i.e. the address of the temporary)
+   */
+  TempAddress* getNewTemp(int width);
 
-    	return oldoffset;
-    }
+	 list<TempAddress*> getTemporaries() {
+		 return temporaries;
+	 }
 
-    /** Returns the *beginning* address of some value, supposedly stored in memory.
-     *  Note that we have no clue about the type of such value, or it's width.
-     *  They must be "computed/retrieved" externally.
-     */
-    void* retrieve(int offset) {
-    	return (void*)((char*)storage + offset);
-    }
+	 list<int> getTempWidths(){
+		 return tempwidths;
+	 }
 
-    /** Returns a new temporary address pointing to the first location of available memory
-     *  Since we would later need to advance the offset anyway, this methods takes care of this;
-     *  that's why we pass the width of what we're gonna store in that location.
-     *
-     *  It returns the *beginning* address of the value to be stored therein (i.e. the address of the temporary)
-     */
-    TempAddress* getNewTemp(int width) {
-	   	void* begin = (void*)((char*)storage + offset);
+	 /** Prints out a dump of the memory.
+	  *  It prints the content of each memory location in hex format.
+		*  Not very useful for you, since the memory will be filled only
+		*  at runtime, but included for completeness.
+		*/
+	 void hexdump();
 
-     	int oldoffset = offset;
-    	offset += width;
-
-    	return new TempAddress(oldoffset);
-   }
+	 /** Prints out a logical view of the memory */
+	 void printOut(SymTbl* tbl);
 };
 
 
@@ -289,13 +288,13 @@ public:
 	int getNextInstr();
 
 	/** Implementation of "gen()" from the textbook.
-	 *  Basically, if generates a new TacInstr with the given parameters, 
+	 *  Basically, if generates a new TacInstr with the given parameters,
 	 *  and stores it in the next available place in the code array
 	 */
 	TacInstr* gen(oprEnum op, Address* operand1, Address* operand2);
 
 	/** Implementation of "gen()" from the textbook.
-	 *  Basically, if generates a new TacInstr with the given parameters, 
+	 *  Basically, if generates a new TacInstr with the given parameters,
 	 *  and stores it in the next available place in the code array
 	 *  This version accounts for using temporaries.
 	 */
@@ -311,10 +310,14 @@ public:
 	void printOut();
 };
 
-/** An abstraction for the Symbol Table 
+/** An abstraction for the Symbol Table
  */
 class SymTbl {
+private:
+	friend void Memory::printOut(SymTbl* tbl);
+
 protected:
+	/** A reference to the (simulated) memory */
 	Memory& mem = Memory::getInstance();
 
 public:
@@ -329,9 +332,12 @@ public:
 	 *  @param lexeme The lexeme used as a key to access the symbol table
 	 */
 	virtual void put(const char* lexeme, typeName type) = 0;
+
+	/** Prints out the symbol table */
+	void printOut() {};
 };
 
-/** A simple implementation for a symbol table. 
+/** A simple implementation for a symbol table.
  *  I assume here that var id's are 1-char long,
  *  so the table is just an array with 26 entries.
  *  NOTE: this class needs to be defined yet.
@@ -359,9 +365,11 @@ public:
 		int off = sym[lexeme]->getOffset();
 		return mem.retrieve(off);
 	}
-
 	/** Prints out the symbl table */
 	void printOut();
+
+	/** Prints out a logical view of the memory */
+	void printMemory();
 };
 
 /* ******************************/
@@ -373,7 +381,7 @@ public:
 //
 //};
 
-/** Implementation of attribute for grammar symbol expr: arithmetic expressions 
+/** Implementation of attribute for grammar symbol expr: arithmetic expressions
  * - E.addr
  */
 class ExprAttr: public Attribute {
@@ -383,23 +391,23 @@ private:
 
 public:
 	/** Constructor for ExprAttr; it will refer to the Address (valuenumber) of the instruction
-	 *  that (when executed) will contain the result of the entire expression. 
+	 *  that (when executed) will contain the result of the entire expression.
 	 *  It needs to know (and store) the type of the result.
 	 */
 	ExprAttr(TacInstr* addr, typeName type);
 
-	/** Constructor for ExprAttr; it will refer to the Address of the variable. 
+	/** Constructor for ExprAttr; it will refer to the Address of the variable.
 	 *  It will infer the type from the type of the variable.
 	 */
 	ExprAttr(VarAddress* addr);
 
-	/** Constructor for ExprAttr; it will refer to a constant. 
+	/** Constructor for ExprAttr; it will refer to a constant.
 	 *  It will infer the type from the type of the constant.
 	 */
 	ExprAttr(ConstAddress* addr);
-	
+
 	/** Constructor for ExprAttr; it will refer to a temporary,
-	 *  supposedly holding some variable. 
+	 *  supposedly holding some variable.
 	 *  The type cannot be inferred, in ths case, so it must be explicitly provided.
 	 */
 	ExprAttr(TempAddress* addr, typeName type);
@@ -411,7 +419,7 @@ public:
 	typeName getType();
 };
 
-/** Implementation of attribute for grammar symbol cond: boolean expressions 
+/** Implementation of attribute for grammar symbol cond: boolean expressions
  * - B.truelist
  * - B.falselist
  */
@@ -423,13 +431,13 @@ public:
 	BoolAttr() {}
 
 	/** Appends a 3-addr code instruction to the truelist.
-	 * 
+	 *
 	 *  @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
 	 */
 	void addTrue(TacInstr* instr);
 
 	/** Appends a 3-addr code instruction to the falselist.
-	  * 
+	  *
 	  * @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
 	  */
 	void addFalse(TacInstr*instr);
@@ -438,14 +446,14 @@ public:
 	 *  Basically, an implementation of merge() for a truelist.
      *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
 	 *
-	 */ 
+	 */
 	void addTrue(list<TacInstr*> l);
 
 	/** Appends a list of instructions to the falselist.
 	 *  Basically, an implementation of merge() for a falselist.
      *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
 	 *
-	 */ 
+	 */
 	void addFalse(list<TacInstr*> l);
 
 	/** Returns the truelist. */
