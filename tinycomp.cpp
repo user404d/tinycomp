@@ -348,6 +348,16 @@ void TargetCode::printOut() {
 // 	virtual void put(const char* lexeme) = 0;
 // };
 
+/** Constructor for the SimpleArraySymTbl class
+ *  Basically, it just initializes all entries in the table to NULL
+ */
+SimpleArraySymTbl::SimpleArraySymTbl() {
+	for (size_t i = 0; i < 26; i++) {
+		// make sure that the table is clean at the beginning
+		sym[i] = NULL;
+	}
+}
+
 /** Returns an entry from the Symbol table, using a lexeme (a string) as the key.
  *  In this simple implementation, it just falls back to the 1-char lexeme assumption
  *  (only the first char of the string is used)

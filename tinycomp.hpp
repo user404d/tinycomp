@@ -337,12 +337,16 @@ public:
 /** A simple implementation for a symbol table.
  *  I assume here that var id's are 1-char long,
  *  so the table is just an array with 26 entries.
- *  NOTE: this class needs to be defined yet.
  */
 class SimpleArraySymTbl : public SymTbl {
 private:
 	VarAddress *sym[26];
 public:
+	/** Constructor for the SimpleArraySymTbl class
+	 *  Basically, it just initializes all entries in the table to NULL
+	 */
+	SimpleArraySymTbl();
+
 	/** Returns an entry, indexed by its lexeme */
 	VarAddress* get(const char* lexeme);
 
