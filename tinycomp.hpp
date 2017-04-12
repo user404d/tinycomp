@@ -101,6 +101,8 @@ public:
 	const char* toString() const;
 };
 
+class Memory;
+
 /** A specialization of Address to hold a temporary
  */
 class TempAddress: public Address {
@@ -110,11 +112,13 @@ private:
 	int name;
 
 	int offset;
-public:
+
+	friend Memory;
+
 	/** Constructor: creates a temporary at the specified offset in memory
 	 */
 	TempAddress(int offset);
-
+public:
 	/** Returns the pointer to the memory location holding the temporary
 	 */
 	int getOffset();
@@ -322,7 +326,7 @@ public:
 
 	/** Pure virtual method; stores a variable into the symbol table.
 	 *  @param lexeme The lexeme used as a key to access the symbol table
-	 *  @param type The type of the lexeme 
+	 *  @param type The type of the lexeme
 	 */
 	virtual void put(const char* lexeme, typeName type) = 0;
 

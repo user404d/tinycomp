@@ -18,6 +18,8 @@ const char* opTable[] = {
 	"=",
 	"+",
 	"*",
+	"[]",
+	"[]",
 	"goto",
 	"ifgoto",
 	"stat"
@@ -567,6 +569,14 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
 		case addOpr:
 			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
 			return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << " " << opTable[instr->op] << " " << instr->operand2;
+		case indexCopyOpr:
+			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
+			return out << setw(4) << instr->valueNumber << ": " << instr->temp << "[" << instr->operand1 << "] = " << instr->operand2;
+			break;
+		case offsetOpr:
+			assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
+			return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << "[" << instr->operand2 << "]";
+			break;
 		case haltOpr:
 			return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op];
 		case mulOpr: /* TBD */
