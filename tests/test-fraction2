@@ -1,0 +1,8 @@
+// A small step forward
+// You should be able to recognize a "fraction constant" and to assign it
+// to the corresponding variable
+
+int i, j;
+fraction f;
+
+f := 1|2;

@@ -1,0 +1,5 @@
+// A very basic test, to check that your lexical part works
+
+int i, j;
+float a, b, c;
+fraction f;

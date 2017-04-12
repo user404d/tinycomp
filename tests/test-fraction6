@@ -1,0 +1,10 @@
+// Type checking
+
+int i, j;
+fraction f, g;
+
+i := 2;
+j := 4;
+
+// this should *not* raise an error; an int may be promoted to a fraction
+f := 2;

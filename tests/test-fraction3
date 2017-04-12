@@ -1,0 +1,11 @@
+// An example of use of the if-then construct
+
+int i, j;
+fraction f;
+
+i := 3;
+j := 4;
+
+if (i == j) then {
+  f := 1|2;
+};

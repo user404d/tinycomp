@@ -1,0 +1,15 @@
+// Make use of the symbol table to check that variables are
+// declared before use
+
+int i, j;
+fraction f;
+
+i := 3;
+j := 4;
+
+if (i == j) {
+  f := 1|2;
+};
+
+// this should raise an error, as g was never declared
+g := 3|4;

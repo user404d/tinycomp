@@ -1,0 +1,26 @@
+// Type checking
+
+int i, j;
+fraction f, g;
+
+i := 2;
+j := 4;
+
+// this should *not* raise an error; an int may be promoted to a fraction
+f := 2;
+
+g := j|2;
+
+// whenever the code we produce will be run, f will evaluate to 2 (or 2|1) and
+// g to 4|2
+
+// hence, the following comparison should evaluate to true
+if (f=g) {
+  stat;
+};
+
+// the '==' operator should instead evaluate to false, as the numerators
+// and denumerators of the two fractions differ
+if (f==g) {
+  stat;
+};

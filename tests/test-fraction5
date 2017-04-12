@@ -1,0 +1,9 @@
+// Type checking
+
+int i, j;
+fraction f;
+
+j := 4;
+
+// this should raise an error, as i was not declared as a fraction
+i := 3|4;
