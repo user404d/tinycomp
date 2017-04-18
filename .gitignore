@@ -1,0 +1,5 @@
+docs/
+*.yy.c
+*.o
+tinycomp
+tinycomp.tab.h

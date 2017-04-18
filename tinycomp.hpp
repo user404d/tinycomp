@@ -2,13 +2,13 @@
 #define TINYCOMP_HPP_
 
 /**
-* @file tinycomp.hpp
-* @brief This header file contains the support code for
-* the translator of tinycomp.
-*
-* @author Marco Ortolani
-* @date 3/13/2017
-*/
+ * @file tinycomp.hpp
+ * @brief This header file contains the support code for
+ * the translator of tinycomp.
+ *
+ * @author Marco Ortolani
+ * @date 3/13/2017
+ */
 
 
 #include <iostream>
@@ -28,77 +28,81 @@ using namespace std;
  */
 class Address {
 protected:
-	/** Overloading of the << operator.
-	 *  It will print the Address by way of the toString() method
-	 */
-	friend std::ostream& operator<<(std::ostream &, const Address *);
+  /** Overloading of the << operator.
+   *  It will print the Address by way of the toString() method
+   */
+  friend std::ostream& operator<<(std::ostream &, const Address *);
 
-	/** Abstract method for printing an Address.
-	 *  Note that toString() *must* be defined in derived classes.
-	 */
-	virtual const char* toString() const = 0;
+  /** Abstract method for printing an Address.
+   *  Note that toString() *must* be defined in derived classes.
+   */
+  virtual const char* toString() const = 0;
 };
 
 /** A specialization of Address to hold a constant
  */
 class ConstAddress: public Address {
 private:
-	typeName type;
-	union {
-		int i;
-		float f;
-	} val;
+  typeName type;
+  union {
+    int i;
+    float f;
+    Fraction frac;
+  } val;
 
 public:
-	/** Constructor for an int constant */
-	ConstAddress(int i);
+  /** Constructor for an int constant */
+  ConstAddress(int i);
 
-	/** Constructor for a float constant. */
-	ConstAddress(float f);
+  /** Constructor for a float constant. */
+  ConstAddress(float f);
 
-	/** Returns the constant's type (as a typeName enum)
-	 */
-	typeName getType();
+  /** Constructor for a Fraction constant. */
+  ConstAddress(Fraction f);
 
-	/** Concrete method for printing a ConstAddress;
-	 *  it's a concrete implementation of the corresponding abstract method in Address
-	 */
-	const char* toString() const;
+  /** Returns the constant's type (as a typeName enum)
+   */
+  typeName getType();
+
+  /** Concrete method for printing a ConstAddress;
+   *  it's a concrete implementation of the corresponding abstract method in Address
+   */
+  const char* toString() const;
 };
 
 /** A specialization of Address to hold a variable
  */
 class VarAddress: public Address {
 private:
-	char lexeme;
+  char lexeme;
 
-	typeName type;
-	int width;
+  typeName type;
+  int width;
 
-	/* pointer to the memory, where the var value is stored */
-	int offset;
+  /* pointer to the memory, where the var value is stored */
+  int offset;
 
 public:
-	/** Constructor: creates a variable address from its id (assuming only 1-char id's).
-	 */
-	VarAddress(char v, typeName t, int offset);
+  /** Constructor: creates a variable address from its id (assuming only 1-char id's).
+   */
+  VarAddress(char v, typeName t, int offset);
 
-	/** Returns the variable's type (as a typeName enum)
-	 */
-	typeName getType();
+  /** Returns the variable's type (as a typeName enum)
+   */
+  typeName getType();
 
-	/** Returns the variable's width, which depends on its type
-	 */
-	int getWidth();
+  /** Returns the variable's width, which depends on its type
+   */
+  int getWidth();
 
-	/** Returns the pointer to the memory location holding the variable's value
-	 */
-	int getOffset();
+  /** Returns the pointer to the memory location holding the variable's value
+   */
+  int getOffset();
 
-	/** Concrete method for printing a VarAddress;
-	 *  it's a concrete implementation of the corresponding abstract method in Address
-	 */
-	const char* toString() const;
+  /** Concrete method for printing a VarAddress;
+   *  it's a concrete implementation of the corresponding abstract method in Address
+   */
+  const char* toString() const;
 };
 
 class Memory;
@@ -107,43 +111,43 @@ class Memory;
  */
 class TempAddress: public Address {
 private:
-	static int counter;
+  static int counter;
 
-	int name;
+  int name;
 
-	int offset;
+  int offset;
 
-	friend Memory;
+  friend Memory;
 
-	/** Constructor: creates a temporary at the specified offset in memory
-	 */
-	TempAddress(int offset);
+  /** Constructor: creates a temporary at the specified offset in memory
+   */
+  TempAddress(int offset);
 public:
-	/** Returns the pointer to the memory location holding the temporary
-	 */
-	int getOffset();
+  /** Returns the pointer to the memory location holding the temporary
+   */
+  int getOffset();
 
-	/** Concrete method for printing a TempAddress;
-	 *  it's a concrete implementation of the corresponding abstract method in Address
-	 */
-	const char* toString() const;
+  /** Concrete method for printing a TempAddress;
+   *  it's a concrete implementation of the corresponding abstract method in Address
+   */
+  const char* toString() const;
 };
 
 /** A specialization of Address to hold an instruction.
  */
 class InstrAddress: public Address {
 private:
-	int arrayCodeIndex;
+  int arrayCodeIndex;
 
-	friend std::ostream& operator<<(std::ostream &, const InstrAddress *);
+  friend std::ostream& operator<<(std::ostream &, const InstrAddress *);
 
 public:
-	/** Constructor to initialize an InstrAddress from an index of the array code.
-	 *  @param vn The index of the TargetCode array, representing a valuenumber.
-	 */
-	InstrAddress(int vn);
+  /** Constructor to initialize an InstrAddress from an index of the array code.
+   *  @param vn The index of the TargetCode array, representing a valuenumber.
+   */
+  InstrAddress(int vn);
 
-	const char* toString() const;
+  const char* toString() const;
 };
 
 /* **************/
@@ -157,35 +161,35 @@ public:
  */
 class TacInstr {
 private:
-	InstrAddress* valueNumber;
-	oprEnum op;
-	Address* operand1;
-	Address* operand2;
+  InstrAddress* valueNumber;
+  oprEnum op;
+  Address* operand1;
+  Address* operand2;
 
-	TempAddress* temp;
+  TempAddress* temp;
 
-	void setValueNumber(int vn);
-	friend class TargetCode;
+  void setValueNumber(int vn);
+  friend class TargetCode;
 
-	friend std::ostream& operator<<(std::ostream &, const TacInstr *);
+  friend std::ostream& operator<<(std::ostream &, const TacInstr *);
 public:
-	/** Constructor of a 3-address code instruction. The result is internally stored
-	 * as an InstrAddress representing the value number (e.g corresponding to an index to the code array)
-	 * @param op The operator for this instruction, as an oprEnum
-	 * @param operand1 The first operand, as a generic Address
-	 * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
-	 * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
-	 */
-	TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
+  /** Constructor of a 3-address code instruction. The result is internally stored
+   * as an InstrAddress representing the value number (e.g corresponding to an index to the code array)
+   * @param op The operator for this instruction, as an oprEnum
+   * @param operand1 The first operand, as a generic Address
+   * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
+   * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
+   */
+  TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
 
-	/** Returns the enum representing the operator of this specific instruction */
-	oprEnum getOp() const;
+  /** Returns the enum representing the operator of this specific instruction */
+  oprEnum getOp() const;
 
-	/** Returns the InstrAddress representing the value number */
-	InstrAddress* getValueNumber();
+  /** Returns the InstrAddress representing the value number */
+  InstrAddress* getValueNumber();
 
-	/** For backpathcing "goto"-like instructions */
-	void patch(TacInstr*);
+  /** For backpathcing "goto"-like instructions */
+  void patch(TacInstr*);
 };
 
 /* ***************************/
@@ -198,42 +202,42 @@ class SymTbl;
  */
 class Memory {
 private:
-	/* our (simulation of the) actual memory */
-	unsigned char* storage;
+  /* our (simulation of the) actual memory */
+  unsigned char* storage;
 
-	/* the pointer to the next block of free memory */
-	int offset;
+  /* the pointer to the next block of free memory */
+  int offset;
 
-	/* Convenience variables to keep track of temporaries
-	   and their 'width', in order to print them out */
-	list<TempAddress*> temporaries;
-	list<int> tempwidths;
+  /* Convenience variables to keep track of temporaries
+     and their 'width', in order to print them out */
+  list<TempAddress*> temporaries;
+  list<int> tempwidths;
 
-	/** Private Constructor
-	 */
-	Memory();
+  /** Private Constructor
+   */
+  Memory();
 
-	// Stop the compiler from generating methods of copy the object
+  // Stop the compiler from generating methods of copy the object
   Memory(Memory const& copy);            // Not to be implemented
   Memory& operator=(Memory const& copy); // Not to be implemented
 public:
-	/** The size of our memory in bytes.
-	 *  It's set to a very small value to keep visualization of the
-	 *  memory dump clean. Increase as needed.
-	 */
-	static const int MEMSIZE = 128;
+  /** The size of our memory in bytes.
+   *  It's set to a very small value to keep visualization of the
+   *  memory dump clean. Increase as needed.
+   */
+  static const int MEMSIZE = 128;
 
-	/** As Memory is implemented as a singleton, its constructor is private.
-	 *  This method is the only way to obtain an instance of Memory.
-	 *  It is guaranteed that it will return always the same instance.
-	 */
+  /** As Memory is implemented as a singleton, its constructor is private.
+   *  This method is the only way to obtain an instance of Memory.
+   *  It is guaranteed that it will return always the same instance.
+   */
   static Memory& getInstance();
 
   /** Store the bytes pointed to by val in memory.
    *  Note that we don't pass the type of the variable to be stored, as this
    *  has no relevance for the memory.
    *
-   *	Returns the *beginning* address of the value just stored.
+   *    Returns the *beginning* address of the value just stored.
    */
   int store(void* val, int width);
 
@@ -251,15 +255,15 @@ public:
    */
   TempAddress* getNewTemp(int width);
 
-	 /** Prints out a dump of the memory.
-	  *  It prints the content of each memory location in hex format.
-		*  Not very useful for you, since the memory will be filled only
-		*  at runtime, but included for completeness.
-		*/
-	 void hexdump();
+  /** Prints out a dump of the memory.
+   *  It prints the content of each memory location in hex format.
+   *  Not very useful for you, since the memory will be filled only
+   *  at runtime, but included for completeness.
+   */
+  void hexdump();
 
-	 /** Prints out a logical view of the memory */
-	 void printOut(SymTbl* tbl);
+  /** Prints out a logical view of the memory */
+  void printOut(SymTbl* tbl);
 };
 
 
@@ -269,69 +273,69 @@ public:
  */
 class TargetCode {
 private:
-	TacInstr* codeArray[1000];
-	int nextInstr;
+  TacInstr* codeArray[1000];
+  int nextInstr;
 
-	TacInstr* gen(TacInstr* instr);
+  TacInstr* gen(TacInstr* instr);
 public:
-	/** Basic constructor; it will initialize the internal array of TacInstr instructions */
-	TargetCode();
+  /** Basic constructor; it will initialize the internal array of TacInstr instructions */
+  TargetCode();
 
-	/** Returns the instruction stored at index i in the code array */
-	TacInstr* getInstr(int i);
+  /** Returns the instruction stored at index i in the code array */
+  TacInstr* getInstr(int i);
 
-	/** Implementation of "nextinstr" from the textbook */
-	int getNextInstr();
+  /** Implementation of "nextinstr" from the textbook */
+  int getNextInstr();
 
-	/** Implementation of "gen()" from the textbook.
-	 *  Basically, if generates a new TacInstr with the given parameters,
-	 *  and stores it in the next available place in the code array
-	 */
-	TacInstr* gen(oprEnum op, Address* operand1, Address* operand2);
+  /** Implementation of "gen()" from the textbook.
+   *  Basically, if generates a new TacInstr with the given parameters,
+   *  and stores it in the next available place in the code array
+   */
+  TacInstr* gen(oprEnum op, Address* operand1, Address* operand2);
 
-	/** Implementation of "gen()" from the textbook.
-	 *  Basically, if generates a new TacInstr with the given parameters,
-	 *  and stores it in the next available place in the code array
-	 *  This version accounts for using temporaries.
-	 */
-	TacInstr* gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
+  /** Implementation of "gen()" from the textbook.
+   *  Basically, if generates a new TacInstr with the given parameters,
+   *  and stores it in the next available place in the code array
+   *  This version accounts for using temporaries.
+   */
+  TacInstr* gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
 
-	/** Implementation of "backpatch()" from the textbook.
-	 *  @param gotolist a list of TacInstr; each one is assumed to be a "goto"-like instruction
-	 *  @param instr the Address of the instruction (i.e. TacInstr) to be patched in the goto's in the list
-	 */
-	void backpatch(list<TacInstr*> gotolist, TacInstr* instr);
+  /** Implementation of "backpatch()" from the textbook.
+   *  @param gotolist a list of TacInstr; each one is assumed to be a "goto"-like instruction
+   *  @param instr the Address of the instruction (i.e. TacInstr) to be patched in the goto's in the list
+   */
+  void backpatch(list<TacInstr*> gotolist, TacInstr* instr);
 
-	/** A convenience method to print out the entire code array */
-	void printOut();
+  /** A convenience method to print out the entire code array */
+  void printOut();
 };
 
 /** An abstraction for the Symbol Table
  */
 class SymTbl {
 private:
-	friend void Memory::printOut(SymTbl* tbl);
+  friend void Memory::printOut(SymTbl* tbl);
 
 protected:
-	/** A reference to the (simulated) memory */
-	Memory& mem = Memory::getInstance();
+  /** A reference to the (simulated) memory */
+  Memory& mem = Memory::getInstance();
 
 public:
-	SymTbl() {}
+  SymTbl() {}
 
-	/** Pure virtual method; retrieves a variable from the symbol table.
-	 *  @param lexeme The lexeme used as a key to access the symbol table
-	 */
-	virtual VarAddress* get(const char* lexeme) = 0;
+  /** Pure virtual method; retrieves a variable from the symbol table.
+   *  @param lexeme The lexeme used as a key to access the symbol table
+   */
+  virtual VarAddress* get(const char* lexeme) = 0;
 
-	/** Pure virtual method; stores a variable into the symbol table.
-	 *  @param lexeme The lexeme used as a key to access the symbol table
-	 *  @param type The type of the lexeme
-	 */
-	virtual void put(const char* lexeme, typeName type) = 0;
+  /** Pure virtual method; stores a variable into the symbol table.
+   *  @param lexeme The lexeme used as a key to access the symbol table
+   *  @param type The type of the lexeme
+   */
+  virtual void put(const char* lexeme, typeName type) = 0;
 
-	/** Prints out the symbol table */
-	void printOut() {};
+  /** Prints out the symbol table */
+  void printOut() {};
 };
 
 /** A simple implementation for a symbol table.
@@ -340,37 +344,37 @@ public:
  */
 class SimpleArraySymTbl : public SymTbl {
 private:
-	VarAddress *sym[26];
+  VarAddress *sym[26];
 public:
-	/** Constructor for the SimpleArraySymTbl class
-	 *  Basically, it just initializes all entries in the table to NULL
-	 */
-	SimpleArraySymTbl();
+  /** Constructor for the SimpleArraySymTbl class
+   *  Basically, it just initializes all entries in the table to NULL
+   */
+  SimpleArraySymTbl();
 
-	/** Returns an entry, indexed by its lexeme */
-	VarAddress* get(const char* lexeme);
+  /** Returns an entry, indexed by its lexeme */
+  VarAddress* get(const char* lexeme);
 
-	/** Returns an entry, indexed by its lexeme (1-char version) */
-	VarAddress* get(char lexeme);
+  /** Returns an entry, indexed by its lexeme (1-char version) */
+  VarAddress* get(char lexeme);
 
-	/** Stores a variable in the symbol table, given its lexeme and type  */
-	void put(const char* lexeme, typeName type);
+  /** Stores a variable in the symbol table, given its lexeme and type  */
+  void put(const char* lexeme, typeName type);
 
-	/** Stores a variable in the symbol table, given its lexeme (1-char version) and type  */
-	void put(char lexeme, typeName type);
+  /** Stores a variable in the symbol table, given its lexeme (1-char version) and type  */
+  void put(char lexeme, typeName type);
 
-	/** Returns the value of a variable by first recovering the offset, and then accessing the memory.
-	 *  Since we don't know the type to be returned, a (void*) is used.
-	 */
-	void* getVarValue(char lexeme) {
-		int off = sym[lexeme]->getOffset();
-		return mem.retrieve(off);
-	}
-	/** Prints out the symbl table */
-	void printOut();
+  /** Returns the value of a variable by first recovering the offset, and then accessing the memory.
+   *  Since we don't know the type to be returned, a (void*) is used.
+   */
+  void* getVarValue(char lexeme) {
+    int off = sym[lexeme]->getOffset();
+    return mem.retrieve(off);
+  }
+  /** Prints out the symbl table */
+  void printOut();
 
-	/** Prints out a logical view of the memory */
-	void printMemory();
+  /** Prints out a logical view of the memory */
+  void printMemory();
 };
 
 /* ******************************/
@@ -387,37 +391,37 @@ public:
  */
 class ExprAttr: public Attribute {
 private:
-	Address* addr;
-	typeName type;
+  Address* addr;
+  typeName type;
 
 public:
-	/** Constructor for ExprAttr; it will refer to the Address (valuenumber) of the instruction
-	 *  that (when executed) will contain the result of the entire expression.
-	 *  It needs to know (and store) the type of the result.
-	 */
-	ExprAttr(TacInstr* addr, typeName type);
+  /** Constructor for ExprAttr; it will refer to the Address (valuenumber) of the instruction
+   *  that (when executed) will contain the result of the entire expression.
+   *  It needs to know (and store) the type of the result.
+   */
+  ExprAttr(TacInstr* addr, typeName type);
 
-	/** Constructor for ExprAttr; it will refer to the Address of the variable.
-	 *  It will infer the type from the type of the variable.
-	 */
-	ExprAttr(VarAddress* addr);
+  /** Constructor for ExprAttr; it will refer to the Address of the variable.
+   *  It will infer the type from the type of the variable.
+   */
+  ExprAttr(VarAddress* addr);
 
-	/** Constructor for ExprAttr; it will refer to a constant.
-	 *  It will infer the type from the type of the constant.
-	 */
-	ExprAttr(ConstAddress* addr);
+  /** Constructor for ExprAttr; it will refer to a constant.
+   *  It will infer the type from the type of the constant.
+   */
+  ExprAttr(ConstAddress* addr);
 
-	/** Constructor for ExprAttr; it will refer to a temporary,
-	 *  supposedly holding some variable.
-	 *  The type cannot be inferred, in ths case, so it must be explicitly provided.
-	 */
-	ExprAttr(TempAddress* addr, typeName type);
+  /** Constructor for ExprAttr; it will refer to a temporary,
+   *  supposedly holding some variable.
+   *  The type cannot be inferred, in ths case, so it must be explicitly provided.
+   */
+  ExprAttr(TempAddress* addr, typeName type);
 
-	/** Returns the E.addr attribute */
-	Address* getAddr();
+  /** Returns the E.addr attribute */
+  Address* getAddr();
 
-	/** Returns the E.type attribute */
-	typeName getType();
+  /** Returns the E.type attribute */
+  typeName getType();
 };
 
 /** Implementation of attribute for grammar symbol cond: boolean expressions
@@ -426,42 +430,42 @@ public:
  */
 class BoolAttr: public Attribute {
 private:
-	list<TacInstr*> truelist;
-	list<TacInstr*> falselist;
+  list<TacInstr*> truelist;
+  list<TacInstr*> falselist;
 public:
-	BoolAttr() {}
+  BoolAttr() {}
 
-	/** Appends a 3-addr code instruction to the truelist.
-	 *
-	 *  @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
-	 */
-	void addTrue(TacInstr* instr);
+  /** Appends a 3-addr code instruction to the truelist.
+   *
+   *  @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
+   */
+  void addTrue(TacInstr* instr);
 
-	/** Appends a 3-addr code instruction to the falselist.
-	  *
-	  * @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
-	  */
-	void addFalse(TacInstr*instr);
+  /** Appends a 3-addr code instruction to the falselist.
+   *
+   * @param instr The instruction to be appended; it is assumed to contain a "goto"-like operator.
+   */
+  void addFalse(TacInstr*instr);
 
-	/** Appends a list of instructions to the truelist.
-	 *  Basically, an implementation of merge() for a truelist.
-     *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
-	 *
-	 */
-	void addTrue(list<TacInstr*> l);
+  /** Appends a list of instructions to the truelist.
+   *  Basically, an implementation of merge() for a truelist.
+   *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
+   *
+   */
+  void addTrue(list<TacInstr*> l);
 
-	/** Appends a list of instructions to the falselist.
-	 *  Basically, an implementation of merge() for a falselist.
-     *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
-	 *
-	 */
-	void addFalse(list<TacInstr*> l);
+  /** Appends a list of instructions to the falselist.
+   *  Basically, an implementation of merge() for a falselist.
+   *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
+   *
+   */
+  void addFalse(list<TacInstr*> l);
 
-	/** Returns the truelist. */
-	list<TacInstr*> getTruelist();
+  /** Returns the truelist. */
+  list<TacInstr*> getTruelist();
 
-	/** Returns the falselist. */
-	list<TacInstr*> getFalselist();
+  /** Returns the falselist. */
+  list<TacInstr*> getFalselist();
 };
 
 /** Implementation of attribute for grammar symbol stmt: a generic statement.
@@ -469,21 +473,21 @@ public:
  */
 class StmtAttr: public Attribute {
 private:
-	list<TacInstr*> nextlist;
+  list<TacInstr*> nextlist;
 public:
-	StmtAttr() {}
+  StmtAttr() {}
 
-	/** Appends an instruction to the nextlist */
-	void addNext(TacInstr*);
+  /** Appends an instruction to the nextlist */
+  void addNext(TacInstr*);
 
-	/** Appends a list of instructions to the next list.
-	 *  Basically, an implementation of merge() for a nextlist.
-     *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
-     */
-	void addNext(list<TacInstr*> l);
+  /** Appends a list of instructions to the next list.
+   *  Basically, an implementation of merge() for a nextlist.
+   *  @param l The list to be appended; it is assumed to contain only "goto"-like instructions.
+   */
+  void addNext(list<TacInstr*> l);
 
-	/** Returns the nextlist. */
-	list<TacInstr*> getNextlist();
+  /** Returns the nextlist. */
+  list<TacInstr*> getNextlist();
 };
 
 #endif //TINYCOMP_H_

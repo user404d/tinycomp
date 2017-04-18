@@ -16,7 +16,8 @@
  */
 typedef enum {
 	intType, 	/*!< integer type */
-	floatType	/*!< floating point type */
+	floatType,	/*!< floating point type */
+        fracType
 } typeName;
 
 /** Enums for 3-addr code - operators */
@@ -38,6 +39,13 @@ typedef enum {
  */
 class Attribute {
 	/* intentionally empty */
+};
+
+class Fraction {
+public:
+    std::uint32_t num, denom;
+    Fraction() = default;
+    Fraction(std::uint32_t _num, std::uint32_t _denom) : num(_num), denom(_denom) {};
 };
 
 #endif
