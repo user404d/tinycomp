@@ -4,6 +4,6 @@ float b;
 stat;
 while(true) {
   stat;
-  a = 3;
+  a := 3;
   stat;
 };

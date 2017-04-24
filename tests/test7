@@ -3,8 +3,8 @@ float f;
 float g;
 
 stat;
-a = 3;
-f = 3.4;
-b = a;
-c = 1 + 2;
-a = c +3;
+a := 3;
+f := 3.4;
+b := a;
+c := 1 + 2;
+a := c +3;

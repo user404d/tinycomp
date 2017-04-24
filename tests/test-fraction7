@@ -15,12 +15,12 @@ g := j|2;
 // g to 4|2
 
 // hence, the following comparison should evaluate to true
-if (f=g) {
+if (f=g) then {
   stat;
 };
 
 // the '==' operator should instead evaluate to false, as the numerators
 // and denumerators of the two fractions differ
-if (f==g) {
+if (f==g) then {
   stat;
 };
