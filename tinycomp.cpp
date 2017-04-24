@@ -18,9 +18,11 @@ const char* opTable[] = {
   ":=",
   "+",
   "*",
+  "/",
   "[]",
   "[]",
   "goto",
+  "je",
   "ifgoto",
   "stat"
 };
@@ -302,7 +304,6 @@ void Memory::printOut(SymTbl* tbl) {
 
 /* TargetCode
  */
-
 TacInstr* TargetCode::gen(TacInstr* instr) {
   instr->setValueNumber(nextInstr);
   codeArray[nextInstr] = instr;
@@ -313,10 +314,10 @@ TacInstr* TargetCode::gen(TacInstr* instr) {
 }
 
 TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2) {
-  return gen(new TacInstr(op, operand1, operand2, NULL));
+  return gen(new TacInstr(op, operand1, operand2));
 }
 
-TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp) {
+TacInstr* TargetCode::gen(oprEnum op, Address* operand1, Address* operand2, Address* temp) {
   return gen(new TacInstr(op, operand1, operand2, temp));
 }
 
@@ -333,12 +334,9 @@ int TargetCode::getNextInstr() {
 }
 
 void TargetCode::backpatch(list<TacInstr*> l, TacInstr* i) {
-  list<TacInstr*>::iterator it;
-  for (it = l.begin(); it != l.end(); ++it) {
-    (*it)->patch(i);
+  for(const auto& instr: l) {
+    instr->patch(i);
   }
-
-  return;
 }
 
 void TargetCode::printOut() {
@@ -448,6 +446,20 @@ void SimpleArraySymTbl::printOut() {
 
 /* TacInstr
  */
+TacInstr::TacInstr(oprEnum op, Address* operand1, Address* operand2, Address* temp) : op(op), operand1(operand1), operand2(operand2) {
+  switch(op)
+  {
+  case jmpOpr:
+  case jeOpr:
+    this->temp = nullptr;
+    this->dest = static_cast<InstrAddress*>(temp);
+    break;
+  default:
+    this->temp = static_cast<TempAddress*>(temp);
+    this->dest = nullptr;
+  }
+}
+
 oprEnum TacInstr::getOp() const {
   return op;
 }
@@ -456,24 +468,17 @@ void TacInstr::setValueNumber(int vn) {
   valueNumber = new InstrAddress(vn);
 }
 
-TacInstr::TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp) {
-  this->valueNumber = NULL;
-  this->op = op;
-  this->operand1 = operand1;
-  this->operand2 = operand2;
-
-  this->temp = temp;
-}
-
 InstrAddress* TacInstr::getValueNumber() {
   return valueNumber;
 }
 
 // for backpathcing "goto"-like instructions
 void TacInstr::patch(TacInstr* i) {
-  assert(this->getOp() == jmpOpr || this->getOp() == condJmpOpr);
+  assert(this->getOp() == jmpOpr 
+         || this->getOp() == condJmpOpr
+         || this->getOp() == jeOpr);
 
-  this->operand1 = i->getValueNumber();
+  this->dest = i->getValueNumber();
 }
 
 
@@ -523,14 +528,18 @@ typeName ExprAttr::getType() {
  */
 void BoolAttr::addTrue(TacInstr* instr) {
   // check: must be a goto
-  assert(instr->getOp() == jmpOpr || instr->getOp() == condJmpOpr);
+  assert(instr->getOp() == jmpOpr 
+         || instr->getOp() == condJmpOpr
+         || instr->getOp() == jeOpr);
 
   truelist.push_back(instr);
 }
 
 void BoolAttr::addFalse(TacInstr* instr) {
   // check: must be a goto
-  assert(instr->getOp() == jmpOpr || instr->getOp() == condJmpOpr);
+  assert(instr->getOp() == jmpOpr 
+         || instr->getOp() == condJmpOpr
+         || instr->getOp() == jeOpr);
 
   falselist.push_back(instr);
 }
@@ -591,22 +600,24 @@ std::ostream& operator<<(std::ostream &out, const TacInstr *instr) {
   case fakeOpr:
     return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op];
   case jmpOpr:
-    assert(instr->operand1 != NULL);
-    return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->operand1;
+    assert(instr->dest != NULL);
+    return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->dest;
+  case mulOpr:
+  case divOpr:
   case addOpr:
     assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
     return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << " " << opTable[instr->op] << " " << instr->operand2;
   case indexCopyOpr:
     assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
     return out << setw(4) << instr->valueNumber << ": " << instr->temp << "[" << instr->operand1 << "] = " << instr->operand2;
-    break;
   case offsetOpr:
     assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->temp != NULL);
     return out << setw(4) << instr->valueNumber << ": " << instr->temp << " = " << instr->operand1 << "[" << instr->operand2 << "]";
-    break;
   case haltOpr:
     return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op];
-  case mulOpr: /* TBD */
+  case jeOpr:
+    assert(instr->operand1 != NULL && instr->operand2 != NULL && instr->dest != NULL);
+    return out << setw(4) << instr->valueNumber << ": " << opTable[instr->op] << " " << instr->operand1 << " " << instr->operand2 << " " << instr->dest;
   case condJmpOpr: /* TBD */
   case UNKNOWNOpr: /* TBD */
   default:

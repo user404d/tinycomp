@@ -165,8 +165,8 @@ private:
   oprEnum op;
   Address* operand1;
   Address* operand2;
-
   TempAddress* temp;
+  InstrAddress* dest;
 
   void setValueNumber(int vn);
   friend class TargetCode;
@@ -180,7 +180,9 @@ public:
    * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
    * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
    */
-  TacInstr(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
+  TacInstr(oprEnum op, Address* operand1, Address* operand2) : valueNumber(nullptr), op(op), operand1(operand1), operand2(operand2), temp(nullptr), dest(nullptr) {};
+
+  TacInstr(oprEnum op, Address* operand1, Address* operand2, Address* temp);
 
   /** Returns the enum representing the operator of this specific instruction */
   oprEnum getOp() const;
@@ -298,7 +300,7 @@ public:
    *  and stores it in the next available place in the code array
    *  This version accounts for using temporaries.
    */
-  TacInstr* gen(oprEnum op, Address* operand1, Address* operand2, TempAddress* temp);
+  TacInstr* gen(oprEnum op, Address* operand1, Address* operand2, Address* temp);
 
   /** Implementation of "backpatch()" from the textbook.
    *  @param gotolist a list of TacInstr; each one is assumed to be a "goto"-like instruction

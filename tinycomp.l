@@ -1,6 +1,4 @@
 %{
-#include <iostream>
-#include <algorithm>
 #include <string>
 #include <stdlib.h>
 #include "tinycomp.h"
@@ -12,16 +10,16 @@ void yyerror(const char *);
 %option noyywrap
 
 /* regular definitions */
-intconst        0|[1-9][0-9]*
+natural         [1-9][0-9]*
+intconst        0|{natural}
 floatconst      {intconst}\.[0-9]*
-fracconst       {intconst}\|{intconst}
+fracconst       {intconst}\|{natural}
 
 %%
 
 "int"       {
                 yylval.typeLexeme = intType;
                 return TYPE;
-
             }
 
 "float"     {
@@ -38,27 +36,27 @@ fracconst       {intconst}\|{intconst}
                 return STAT;
             }
 
-
 ">="            return GE;
 "<="            return LE;
-"=="            return EQ;
+"=="            return REQ;
 "!="            return NE;
+"="             return SEQ;
+":="            return ASSIGN;
 
 "||"            return OR;
 "&&"            return AND;
 
-
 "while"         return WHILE;
 "if"            return IF;
+"then"          return THEN;
 "else"          return ELSE;
-"print"         return PRINT;
+"print"         return STAT; // TODO: Modify to print value
 
 "true"          return TRUE;
 "false"         return FALSE;
 
 [a-z]       {
                 yylval.idLexeme = yytext[0];
-                yyerror("ID");
                 return ID;
             }
 
@@ -74,16 +72,15 @@ fracconst       {intconst}\|{intconst}
 
 {fracconst} {
                 // get numerator and denominator
-                yyerror("Fraction");
                 std::string fraction(yytext);
                 std::string::size_type pos = 0;
                 pos = fraction.find("|");
-                yylval.fracValue.num = std::stoi(fraction.substr(0,pos));
-                yylval.fracValue.denom = std::stoi(fraction.substr(pos));
+                yylval.fracValue = Fraction(std::stoi(fraction.substr(0,pos)),
+                                            std::stoi(fraction.substr(pos+1)));
                 return FRACTION;
              }
 
-[-()<>=+*/,:;{}.|] {
+[-()<>=+*/,;{}.|] {
                 return *yytext;
              }
 

@@ -10,14 +10,20 @@
 * @date 3/13/2017
 */
 
+#include<unordered_map>
+
 /** Type system; each native data type is stored as a value in this enumeration.
  *  Note that for structured types we need a more complex structure; also, I am
  *  not explicitly accounting for a type hierarchy here.
  */
-typedef enum {
-	intType, 	/*!< integer type */
+typedef enum typeTree {
+        IDENTITY,
+	intType,	/*!< integer type */
+        fracType,       /*!< fraction type */
+        FRACPROMO,      /*!< promote to fraction */
 	floatType,	/*!< floating point type */
-        fracType
+        FLOATPROMO,     /*!< promote to float */
+        ERROR
 } typeName;
 
 /** Enums for 3-addr code - operators */
@@ -27,9 +33,11 @@ typedef enum {
 	copyOpr, 	/*!< the assignment operator */
 	addOpr, 	/*!< the addition operator */
 	mulOpr, 	/*!< the multiplication operator */
+        divOpr,         /*!< the division operator */
 	indexCopyOpr, 	/*!< the indexed copy operator x[i] = y */
 	offsetOpr, 	/*!< the displacement operator x = y[i] */
 	jmpOpr, 	/*!< unconditional jump; the goto operator */
+        jeOpr,          /*!< jump if equal operator */
 	condJmpOpr, /*!< conditional jump; the if ... goto operator */
 	fakeOpr		/*!< a temporary "fake" operator for simulating the ones yet-to-be implemented */
 } oprEnum;
@@ -43,9 +51,28 @@ class Attribute {
 
 class Fraction {
 public:
-    std::uint32_t num, denom;
+    std::int32_t num, denom;
     Fraction() = default;
-    Fraction(std::uint32_t _num, std::uint32_t _denom) : num(_num), denom(_denom) {};
+    Fraction(std::int32_t _num, std::int32_t _denom) : num(_num), denom(_denom) {};
 };
+
+namespace Type
+{
+  struct type_name_hash
+  {
+    std::size_t operator()(const typeName val) const {
+      return static_cast<std::size_t>(val);
+    }
+  };
+
+  using TypeSizeMap = std::unordered_map<typeName,std::size_t,type_name_hash>;
+
+  static const TypeSizeMap size = 
+    {
+      {typeTree::intType, sizeof(int)},
+      {typeTree::fracType, sizeof(Fraction)},
+      {typeTree::floatType, sizeof(float)}
+    };
+}
 
 #endif
