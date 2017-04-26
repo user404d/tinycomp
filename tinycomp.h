@@ -17,13 +17,13 @@
  *  not explicitly accounting for a type hierarchy here.
  */
 typedef enum typeTree {
-  IDENTITY,
-  intType,	/*!< integer type */
-  fracType,       /*!< fraction type */
-  FRACPROMO,      /*!< promote to fraction */
-  floatType,	/*!< floating point type */
-  FLOATPROMO,     /*!< promote to float */
-  ERROR
+  IDENTITY,     /*!< identity 0x0 = int ^ int, etc. */
+  intType,	/*!< integer type 0x1 */
+  fracType,     /*!< fraction type 0x2 */
+  FRACPROMO,    /*!< promote to fraction 0x3 = int ^ fraction */
+  floatType,	/*!< floating point type 0x4 */
+  FLOATPROMO,   /*!< promote to float 0x5 = int ^ float */
+  ERROR         /*!< Undefined type */
 } typeName;
 
 /** Enums for 3-addr code - operators */
@@ -56,6 +56,9 @@ public:
   std::int32_t num,
   /** denominator */
                denom;
+
+  /** Fraction default constructor.
+   */
   Fraction() = default;
 
   /** Constructor for a Fraction.

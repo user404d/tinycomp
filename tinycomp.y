@@ -138,24 +138,45 @@ STAT
 
   const int width = Type::size.at(var->getType());
   ExprAttr* ex = static_cast<ExprAttr*>($3);
+  // See tinycomp.h for typeTree promotion conditions
+  // Compute promotion type
   const typeName promo = static_cast<typeName>(var->getType() ^ ex->getType());
 
+  // Determine which instructions are necessary based on the types
   if(promo == typeTree::IDENTITY || promo == typeTree::FLOATPROMO) {
     if(var->getType() != typeTree::fracType) {
       code->gen(copyOpr, var, ex->getAddr());
     }
     else {
+      /** Use two temporaries to copy fraction expression numerator
+          and denominator into the variable numerator and denominator.
+          Two constants are necessary for variable offsets.
+          num = 0
+          denom = sizeof(Fraction)/2
+          u = ex[num]
+          v = ex[denom]
+          var[num] = u
+          var[denom] = v
+       */
       TempAddress * u = mem.getNewTemp(width/2),
         * v = mem.getNewTemp(width/2);
       ConstAddress * num = new ConstAddress(0),
         * denom = new ConstAddress(width/2);
       code->gen(offsetOpr, ex->getAddr(), num, u);
       code->gen(offsetOpr, ex->getAddr(), denom, v);
-      code->gen(indexCopyOpr, num, ex->getAddr(), var);
-      code->gen(indexCopyOpr, denom, u, var);
+      code->gen(indexCopyOpr, num, u, var);
+      code->gen(indexCopyOpr, denom, v, var);
     }
   }
   else if(var->getType() == typeTree::fracType && ex->getType() == typeTree::intType) {
+    /** Promote the integer expression to a fraction and copy
+        the value into the variable using appropriate offsets.
+        Two constants are necessary for variable offsets.
+        num = 0
+        denom = sizeof(Fraction)/2
+        var[num] = ex
+        var[denom] = 1
+    */
     ConstAddress * num = new ConstAddress(0),
       * denom = new ConstAddress(width/2);
     code->gen(indexCopyOpr, num, ex->getAddr(), var);
@@ -195,6 +216,9 @@ cond ')'             // COND)
 }
 THEN '{' stmt_list '}'
 {
+  /** Essentially the while loop without the jump back to check the
+      condition added to the end of the stmt_list body.
+   */
   code->backpatch(((BoolAttr *)$3)->getTruelist(), code->getInstr($<inhAttr>5));
 
   StmtAttr *attrs = new StmtAttr();
@@ -219,6 +243,15 @@ INTEGER
 }
 | FRACTION
 {
+  /** Fraction constant needs to be loaded into a temporary of the
+      appropriate width. Two constants are necessary for appropriate
+      offsets and two constants are necessary for the fraction
+      numerator and denominator.
+      num = 0
+      denom = sizeof(Fraction)/2
+      temp[num] = $1.num
+      temp[denom] = $1.denom
+   */
   const int width = Type::size.at(typeTree::fracType);
   TempAddress * temp = mem.getNewTemp(width);
   ConstAddress * num = new ConstAddress(0),
@@ -237,11 +270,18 @@ INTEGER
 }
 | expr '|' expr
 {
+  /** Fraction expression which needs to be placed in a temporary of
+      the appropriate width. Two constants are necessary for offsets
+      into the temporary variable.
+      num = 0
+      denom = sizeof(Fraction) / 2
+      temp[num] = ex1
+      temp[denom] = ex2
+   */
   const int width = Type::size.at(typeTree::fracType);
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
     * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
-  TacInstr * i = nullptr;
   ConstAddress * num = new ConstAddress(0),
     * denom = new ConstAddress(width/2);
   
@@ -268,15 +308,17 @@ INTEGER
     {
       temp = mem.getNewTemp(Type::size.at(ex1->getType()));
       i = code->gen(addOpr, ex1->getAddr(), ex2->getAddr(), temp);
+      $$ = new ExprAttr(i, ex1->getType());
       break;
     }
+  case typeTree::FRACPROMO: /* TBD */
+  case typeTree::FLOATPROMO:
   default:
     {
       yyerror("Type mismatch");
       assert(false);
     }
   }
-  $$ = new ExprAttr(i, ex1->getType());
 }
 | expr '/' expr
 {
@@ -291,15 +333,17 @@ INTEGER
       {
         temp = mem.getNewTemp(Type::size.at(ex1->getType()));
         i = code->gen(divOpr, ex1->getAddr(), ex2->getAddr(), temp);
+        $$ = new ExprAttr(i, ex1->getType());
         break;
       }
+    case typeTree::FRACPROMO: /* TBD */
+    case typeTree::FLOATPROMO:
     default:
       {
         yyerror("Type mismatch");
         assert(false);
       }
     }
-  $$ = new ExprAttr(i, ex1->getType());
 }
 | expr '*' expr
 {
@@ -307,38 +351,54 @@ INTEGER
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
     * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
-  TacInstr * i = nullptr;
 
+  /** Compute multiplication operation and store result in a
+      temporary of appropriate width.
+   */
   switch(ex1->getType() ^ ex2->getType()) {
   case typeTree::IDENTITY:
     {
       if(ex1->getType() != typeTree::fracType) {
         temp = mem.getNewTemp(Type::size.at(ex1->getType()));
-        i = code->gen(mulOpr, ex1->getAddr(), ex2->getAddr(), temp);
+        code->gen(mulOpr, ex1->getAddr(), ex2->getAddr(), temp);
       }
       else {
+        /** Two temporaries are necessary for computing the
+            result of the fraction * fraction operation. Two
+            constants are necessary for offsets.
+            num = 0
+            denom = sizeof(Fraction) / 2
+            t = ex1[num]
+            u = ex2[num]
+            t = t * u
+            temp[num] = t
+            (similarly for denominator)
+         */
         const int width = Type::size.at(typeTree::fracType),
           offset = width/2;
         temp = mem.getNewTemp(width);
         TempAddress * t = mem.getNewTemp(offset),
-          * u = mem.getNewTemp(offset),
-          * v = mem.getNewTemp(offset);
+          * u = mem.getNewTemp(offset);
         ConstAddress * num = new ConstAddress(0),
           * denom = new ConstAddress(offset);
 
         code->gen(offsetOpr, ex1->getAddr(), num, t);
         code->gen(offsetOpr, ex2->getAddr(), num, u);
         code->gen(mulOpr, t, u, t);
-        code->gen(offsetOpr, ex1->getAddr(), denom, u);
-        code->gen(offsetOpr, ex2->getAddr(), denom, v);
-        code->gen(mulOpr, u, v, u);
-        i = code->gen(indexCopyOpr, num, t, temp);
-        code->gen(indexCopyOpr, denom, u, temp);
+        code->gen(indexCopyOpr, num, t, temp);
+        code->gen(offsetOpr, ex1->getAddr(), denom, t);
+        code->gen(offsetOpr, ex2->getAddr(), denom, u);
+        code->gen(mulOpr, t, u, t);
+        code->gen(indexCopyOpr, denom, t, temp);
       }
+      $$ = new ExprAttr(temp, ex1->getType());
       break;
     }
   case typeTree::FRACPROMO:
     {
+      /** Simply multiply numerator of the fraction expression
+          with integer and store denominator directly.
+       */
       const int width = Type::size.at(typeTree::fracType),
         offset = width/2;
       temp = mem.getNewTemp(width);
@@ -350,16 +410,25 @@ INTEGER
       code->gen(offsetOpr, ex1->getAddr(), num, t);
       code->gen(offsetOpr, ex2->getAddr(), num, u);
       code->gen(mulOpr, t, u, t);
+      code->gen(indexCopyOpr, num, t, temp);
 
       if(ex1->getType() == typeTree::fracType) {
-        code->gen(offsetOpr, ex1->getAddr(), denom, u);
+        code->gen(offsetOpr, ex1->getAddr(), denom, t);
       }
       else {
-        code->gen(offsetOpr, ex2->getAddr(), denom, u);
+        code->gen(offsetOpr, ex2->getAddr(), denom, t);
       }
-
-      i = code->gen(indexCopyOpr, num, t, temp);
-      code->gen(indexCopyOpr, denom, u, temp);
+      code->gen(indexCopyOpr, denom, t, temp);
+      $$ = new ExprAttr(temp, typeTree::fracType);
+      break;
+    }
+  case typeTree::FLOATPROMO:
+    {
+      /** Simply do the multiplication and promote to float.
+       */
+      temp = mem.getNewTemp(Type::size.at(ex1->getType()));
+      code->gen(mulOpr, ex1->getAddr(), ex2->getAddr(), temp);
+      $$ = new ExprAttr(temp, typeTree::floatType);
       break;
     }
   default:
@@ -368,7 +437,6 @@ INTEGER
       assert(false);
     }
   }
-  $$ = new ExprAttr(i, ex1->getType());
 }
 ;
 
@@ -404,12 +472,22 @@ TRUE
   case typeTree::IDENTITY:
     {
       if(ex1->getType() != typeTree::fracType) {
+        /** Generate two jumps, the first is for when the comparison
+            is true and the second is for when the comparison is false.
+         */
         t = code->gen(jeOpr, ex1->getAddr(), ex2->getAddr(), nullptr);
         f = code->gen(jmpOpr, nullptr, nullptr);
         attrs->addTrue(t);
         attrs->addFalse(f);
       }
       else {
+        /** Generate four jumps: the first compares the numerators,
+            the second for when the first fails, the third compares
+            the denominators, and the fourth is for when the third
+            fails. The first needs to be patched to point to the
+            address of the beginning of the block preparing for the
+            third jump.
+        */
         const int offset = Type::size.at(ex1->getType()) / 2;
         TempAddress * u = mem.getNewTemp(offset),
           * v = mem.getNewTemp(offset);
@@ -454,12 +532,19 @@ TRUE
   case typeTree::IDENTITY:
     {
       if(ex1->getType() != typeTree::fracType) {
+        /** Generate two jumps, the first is for when the comparison
+            is true and the second is for when the comparison is false.
+         */
         t = code->gen(jeOpr, ex1->getAddr(), ex2->getAddr(), nullptr);
         f = code->gen(jmpOpr, nullptr, nullptr);
         attrs->addTrue(t);
         attrs->addFalse(f);
       }
       else {
+        /** Generate two jumps: compute the floating point value
+            of ex1[num]/ex1[denom] and ex2[num]/ex2[denom] then
+            compare those values.
+         */
         const int offset = Type::size.at(typeTree::fracType) / 2;
         TempAddress * u = mem.getNewTemp(offset),
           * v = mem.getNewTemp(offset),
@@ -482,6 +567,10 @@ TRUE
     }
   case typeTree::FRACPROMO:
     {
+      /** Generate two jumps: depending on which expression is a
+          fraction, compute the result of ex[num]/ex[denom] then
+          compare the result to the integer expression.
+       */
       const int offset = Type::size.at(typeTree::fracType) / 2;
       TempAddress * u = mem.getNewTemp(offset),
         * v = mem.getNewTemp(offset);
