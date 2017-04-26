@@ -2,13 +2,13 @@
 #define TINYCOMP_H_
 
 /**
-* @file tinycomp.h
-* @brief This header file contains the definitions that must
-* be shared between flex, bison, and the support code.
-*
-* @author Marco Ortolani
-* @date 3/13/2017
-*/
+ * @file tinycomp.h
+ * @brief This header file contains the definitions that must
+ * be shared between flex, bison, and the support code.
+ *
+ * @author Marco Ortolani
+ * @date 3/13/2017
+ */
 
 #include<unordered_map>
 
@@ -17,57 +17,76 @@
  *  not explicitly accounting for a type hierarchy here.
  */
 typedef enum typeTree {
-        IDENTITY,
-	intType,	/*!< integer type */
-        fracType,       /*!< fraction type */
-        FRACPROMO,      /*!< promote to fraction */
-	floatType,	/*!< floating point type */
-        FLOATPROMO,     /*!< promote to float */
-        ERROR
+  IDENTITY,
+  intType,	/*!< integer type */
+  fracType,       /*!< fraction type */
+  FRACPROMO,      /*!< promote to fraction */
+  floatType,	/*!< floating point type */
+  FLOATPROMO,     /*!< promote to float */
+  ERROR
 } typeName;
 
 /** Enums for 3-addr code - operators */
 typedef enum {
-	UNKNOWNOpr, /*!< this is the default, for an unknown operator (it should not occur) */
-	haltOpr, 	/*!< return control to the operating system */
-	copyOpr, 	/*!< the assignment operator */
-	addOpr, 	/*!< the addition operator */
-	mulOpr, 	/*!< the multiplication operator */
-        divOpr,         /*!< the division operator */
-	indexCopyOpr, 	/*!< the indexed copy operator x[i] = y */
-	offsetOpr, 	/*!< the displacement operator x = y[i] */
-	jmpOpr, 	/*!< unconditional jump; the goto operator */
-        jeOpr,          /*!< jump if equal operator */
-	condJmpOpr, /*!< conditional jump; the if ... goto operator */
-	fakeOpr		/*!< a temporary "fake" operator for simulating the ones yet-to-be implemented */
+  UNKNOWNOpr,   /*!< this is the default, for an unknown operator (it should not occur) */
+  haltOpr, 	/*!< return control to the operating system */
+  copyOpr, 	/*!< the assignment operator */
+  addOpr, 	/*!< the addition operator */
+  mulOpr, 	/*!< the multiplication operator */
+  divOpr,       /*!< the division operator */
+  indexCopyOpr, /*!< the indexed copy operator x[i] = y */
+  offsetOpr, 	/*!< the displacement operator x = y[i] */
+  jmpOpr, 	/*!< unconditional jump; the goto operator */
+  jeOpr,        /*!< jump if equal operator */
+  condJmpOpr,   /*!< conditional jump; the if ... goto operator */
+  fakeOpr	/*!< a temporary "fake" operator for simulating the ones yet-to-be implemented */
 } oprEnum;
 
 /** An empty class representing the attributes of the grammar symbols.
  * It must be specialized for each specific attribute.
  */
 class Attribute {
-	/* intentionally empty */
+  /* intentionally empty */
 };
 
+/** Fraction class */
 class Fraction {
 public:
-    std::int32_t num, denom;
-    Fraction() = default;
-    Fraction(std::int32_t _num, std::int32_t _denom) : num(_num), denom(_denom) {};
+  /** numerator */
+  std::int32_t num,
+  /** denominator */
+               denom;
+  Fraction() = default;
+
+  /** Constructor for a Fraction.
+   * @param _num an int for the numerator
+   * @param _denom an int for the denominator
+   */
+ Fraction(std::int32_t _num, std::int32_t _denom)
+   : num(_num), denom(_denom) {};
 };
 
+/** Namespace containing type lookup table.
+ */
 namespace Type
 {
+  /** Functor for typeName hashing.
+   */
   struct type_name_hash
   {
+    /** Implements hash function for typeName.
+        @param val a typeName;
+    */
     std::size_t operator()(const typeName val) const {
       return static_cast<std::size_t>(val);
     }
   };
 
+  /** typedef for typeName -> size mapping. */
   using TypeSizeMap = std::unordered_map<typeName,std::size_t,type_name_hash>;
 
-  static const TypeSizeMap size = 
+  /** Map<typeName,std::size_t> allows for runtime lookup of type widths */
+  static const TypeSizeMap size =
     {
       {typeTree::intType, sizeof(int)},
       {typeTree::fracType, sizeof(Fraction)},

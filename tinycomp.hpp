@@ -47,7 +47,6 @@ private:
   union {
     int i;
     float f;
-    Fraction frac;
   } val;
 
 public:
@@ -56,9 +55,6 @@ public:
 
   /** Constructor for a float constant. */
   ConstAddress(float f);
-
-  /** Constructor for a Fraction constant. */
-  ConstAddress(Fraction f);
 
   /** Returns the constant's type (as a typeName enum)
    */
@@ -178,10 +174,16 @@ public:
    * @param op The operator for this instruction, as an oprEnum
    * @param operand1 The first operand, as a generic Address
    * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
-   * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
    */
   TacInstr(oprEnum op, Address* operand1, Address* operand2) : valueNumber(nullptr), op(op), operand1(operand1), operand2(operand2), temp(nullptr), dest(nullptr) {};
 
+  /** Constructor of a 3-address code instruction. The result is internally stored
+   * as an InstrAddress representing the value number (e.g corresponding to an index to the code array)
+   * @param op The operator for this instruction, as an oprEnum
+   * @param operand1 The first operand, as a generic Address
+   * @param operand2 The second operand (may be NULL for operators that do not require 2 operands)
+   * @param temp Holds a temporary, when explicitly needed to specify the address result, depending on the operation
+   */
   TacInstr(oprEnum op, Address* operand1, Address* operand2, Address* temp);
 
   /** Returns the enum representing the operator of this specific instruction */

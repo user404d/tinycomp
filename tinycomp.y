@@ -28,7 +28,7 @@
   Memory& mem = Memory::getInstance();
   SimpleArraySymTbl *sym = new SimpleArraySymTbl();
   TargetCode *code = new TargetCode();
-%}
+  %}
 
 /* This is the union that defines the type for var yylval,
  * which corresponds to 'lexval' in our textboox parlance.
@@ -59,10 +59,10 @@
 
 %left OR AND
 
-%left GE LE REQ NE SEQ '>' '<' ASSIGN
+%left GE LE REQ NE SEQ '>' '<'
 %left '+' '-'
 %left '*' '/'
-%nonassoc UMINUS
+%nonassoc UMINUS ASSIGN
 
 %type <attrs>expr
 %type <attrs>stmt
@@ -136,22 +136,33 @@ STAT
     assert(false);
   }
 
+  const int width = Type::size.at(var->getType());
   ExprAttr* ex = static_cast<ExprAttr*>($3);
   const typeName promo = static_cast<typeName>(var->getType() ^ ex->getType());
-  const int width = Type::size.at(var->getType());
 
   if(promo == typeTree::IDENTITY || promo == typeTree::FLOATPROMO) {
-    code->gen(copyOpr, var, ex->getAddr());
+    if(var->getType() != typeTree::fracType) {
+      code->gen(copyOpr, var, ex->getAddr());
+    }
+    else {
+      TempAddress * u = mem.getNewTemp(width/2),
+        * v = mem.getNewTemp(width/2);
+      ConstAddress * num = new ConstAddress(0),
+        * denom = new ConstAddress(width/2);
+      code->gen(offsetOpr, ex->getAddr(), num, u);
+      code->gen(offsetOpr, ex->getAddr(), denom, v);
+      code->gen(indexCopyOpr, num, ex->getAddr(), var);
+      code->gen(indexCopyOpr, denom, u, var);
+    }
   }
   else if(var->getType() == typeTree::fracType && ex->getType() == typeTree::intType) {
-    TempAddress* temp = mem.getNewTemp(width);
-    code->gen(indexCopyOpr, new ConstAddress(0), ex->getAddr(), temp);
-    code->gen(indexCopyOpr, new ConstAddress(width / 2),
-              new ConstAddress(1), temp);
-    code->gen(copyOpr, var, temp);
+    ConstAddress * num = new ConstAddress(0),
+      * denom = new ConstAddress(width/2);
+    code->gen(indexCopyOpr, num, ex->getAddr(), var);
+    code->gen(indexCopyOpr, denom, new ConstAddress(1), var);
   }
   else {
-    yyerror("Type Mismatch");
+    yyerror("Type mismatch");
     assert(false);
   }
 
@@ -208,9 +219,15 @@ INTEGER
 }
 | FRACTION
 {
-  ConstAddress *ia = new ConstAddress($1);
-  
-  $$ = new ExprAttr(ia);
+  const int width = Type::size.at(typeTree::fracType);
+  TempAddress * temp = mem.getNewTemp(width);
+  ConstAddress * num = new ConstAddress(0),
+    * denom = new ConstAddress(width/2);
+
+  code->gen(indexCopyOpr, num, new ConstAddress($1.num), temp);
+  code->gen(indexCopyOpr, denom, new ConstAddress($1.denom), temp);
+
+  $$ = new ExprAttr(temp, typeTree::fracType);
 }
 | ID
 {
@@ -220,48 +237,51 @@ INTEGER
 }
 | expr '|' expr
 {
+  const int width = Type::size.at(typeTree::fracType);
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
   TacInstr * i = nullptr;
+  ConstAddress * num = new ConstAddress(0),
+    * denom = new ConstAddress(width/2);
   
   if(ex1->getType() != typeTree::intType || ex2->getType() != typeTree::intType) {
     yyerror("Non-integer used within fraction expression");
     assert(false);
   }
 
-  temp = mem.getNewTemp(Type::size.at(typeTree::fracType));
-  i = code->gen(indexCopyOpr, new ConstAddress(0), ex1->getAddr(), temp);
-  code->gen(indexCopyOpr, new ConstAddress(4), ex2->getAddr(), temp);
-  $$ = new ExprAttr(i, typeTree::fracType);
+  temp = mem.getNewTemp(width);
+  code->gen(indexCopyOpr, num, ex1->getAddr(), temp);
+  code->gen(indexCopyOpr, denom, ex2->getAddr(), temp);
+
+  $$ = new ExprAttr(temp, typeTree::fracType);
 }
 | expr '+' expr
 {
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
   TacInstr * i = nullptr;
 
-  switch(ex1->getType() ^ ex2->getType())
+  switch(ex1->getType() ^ ex2->getType()) {
+  case typeTree::IDENTITY:
     {
-    case typeTree::IDENTITY:
-      {
-        temp = mem.getNewTemp(Type::size.at(ex1->getType()));
-        i = code->gen(addOpr, ex1->getAddr(), ex2->getAddr(), temp);
-        break;
-      }
-    default:
-      {
-        yyerror("Type mismatch");
-        assert(false);
-      }
+      temp = mem.getNewTemp(Type::size.at(ex1->getType()));
+      i = code->gen(addOpr, ex1->getAddr(), ex2->getAddr(), temp);
+      break;
     }
+  default:
+    {
+      yyerror("Type mismatch");
+      assert(false);
+    }
+  }
   $$ = new ExprAttr(i, ex1->getType());
 }
 | expr '/' expr
 {
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
   TacInstr * i = nullptr;
 
@@ -285,66 +305,69 @@ INTEGER
 {
   // multiplication
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   TempAddress * temp = nullptr;
   TacInstr * i = nullptr;
 
-  switch(ex1->getType() ^ ex2->getType())
+  switch(ex1->getType() ^ ex2->getType()) {
+  case typeTree::IDENTITY:
     {
-    case typeTree::IDENTITY:
-      {
-        if(ex1->getType() == typeTree::fracType) {
-          const int width = Type::size.at(typeTree::fracType),
-                    offset = width/2;
-          temp = mem.getNewTemp(width);
-          TempAddress * t = mem.getNewTemp(offset),
-                      * u = mem.getNewTemp(offset),
-                      * v = mem.getNewTemp(offset);
-          ConstAddress * num = new ConstAddress(0),
-                       * denom = new ConstAddress(offset);
-          code->gen(offsetOpr, ex1->getAddr(), num, t);
-          code->gen(offsetOpr, ex2->getAddr(), num, u);
-          code->gen(mulOpr, t, u, t);
-          code->gen(offsetOpr, ex1->getAddr(), denom, u);
-          code->gen(offsetOpr, ex2->getAddr(), denom, v);
-          code->gen(mulOpr, u, v, u);
-          i = code->gen(indexCopyOpr, num, t, temp);
-          code->gen(indexCopyOpr, denom, u, temp);
-        }
-        else {
-          temp = mem.getNewTemp(Type::size.at(ex1->getType()));
-          i = code->gen(mulOpr, ex1->getAddr(), ex2->getAddr(), temp);
-        }
-        break;
+      if(ex1->getType() != typeTree::fracType) {
+        temp = mem.getNewTemp(Type::size.at(ex1->getType()));
+        i = code->gen(mulOpr, ex1->getAddr(), ex2->getAddr(), temp);
       }
-    case typeTree::FRACPROMO:
-      {
+      else {
         const int width = Type::size.at(typeTree::fracType),
-                  offset = width/2;
+          offset = width/2;
         temp = mem.getNewTemp(width);
         TempAddress * t = mem.getNewTemp(offset),
-                    * u = mem.getNewTemp(offset);
+          * u = mem.getNewTemp(offset),
+          * v = mem.getNewTemp(offset);
         ConstAddress * num = new ConstAddress(0),
-                     * denom = new ConstAddress(offset);
+          * denom = new ConstAddress(offset);
+
         code->gen(offsetOpr, ex1->getAddr(), num, t);
         code->gen(offsetOpr, ex2->getAddr(), num, u);
         code->gen(mulOpr, t, u, t);
-        if(ex1->getType() == typeTree::fracType) {
-          code->gen(offsetOpr, ex1->getAddr(), denom, u);
-        }
-        else {
-          code->gen(offsetOpr, ex2->getAddr(), denom, u);
-        }
+        code->gen(offsetOpr, ex1->getAddr(), denom, u);
+        code->gen(offsetOpr, ex2->getAddr(), denom, v);
+        code->gen(mulOpr, u, v, u);
         i = code->gen(indexCopyOpr, num, t, temp);
         code->gen(indexCopyOpr, denom, u, temp);
-        break;
       }
-    default:
-      {
-        yyerror("Type mismatch");
-        assert(false);
-      }
+      break;
     }
+  case typeTree::FRACPROMO:
+    {
+      const int width = Type::size.at(typeTree::fracType),
+        offset = width/2;
+      temp = mem.getNewTemp(width);
+      TempAddress * t = mem.getNewTemp(offset),
+        * u = mem.getNewTemp(offset);
+      ConstAddress * num = new ConstAddress(0),
+        * denom = new ConstAddress(offset);
+
+      code->gen(offsetOpr, ex1->getAddr(), num, t);
+      code->gen(offsetOpr, ex2->getAddr(), num, u);
+      code->gen(mulOpr, t, u, t);
+
+      if(ex1->getType() == typeTree::fracType) {
+        code->gen(offsetOpr, ex1->getAddr(), denom, u);
+      }
+      else {
+        code->gen(offsetOpr, ex2->getAddr(), denom, u);
+      }
+
+      i = code->gen(indexCopyOpr, num, t, temp);
+      code->gen(indexCopyOpr, denom, u, temp);
+      break;
+    }
+  default:
+    {
+      yyerror("Type mismatch");
+      assert(false);
+    }
+  }
   $$ = new ExprAttr(i, ex1->getType());
 }
 ;
@@ -372,121 +395,124 @@ TRUE
 {
   // boolean strict equality
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   BoolAttr * attrs = new BoolAttr();
   TacInstr * t = nullptr,
-           * f = nullptr;
+    * f = nullptr;
 
-  switch(ex1->getType() ^ ex2->getType())
+  switch(ex1->getType() ^ ex2->getType()) {
+  case typeTree::IDENTITY:
     {
-    case typeTree::IDENTITY:
-      {
+      if(ex1->getType() != typeTree::fracType) {
         t = code->gen(jeOpr, ex1->getAddr(), ex2->getAddr(), nullptr);
         f = code->gen(jmpOpr, nullptr, nullptr);
+        attrs->addTrue(t);
         attrs->addFalse(f);
-
-        if(ex1->getType() == typeTree::fracType) {
-          const int offset = Type::size.at(ex1->getType()) / 2;
-          TempAddress * u = mem.getNewTemp(offset),
-                      * v = mem.getNewTemp(offset);
-          ConstAddress * denom = new ConstAddress(offset);
-          TacInstr * tt = nullptr,
-                   * ff = nullptr;
-
-          code->gen(offsetOpr, ex1->getAddr(), denom, u);
-          code->gen(offsetOpr, ex2->getAddr(), denom, v);
-          tt = code->gen(jeOpr, u, v, nullptr);
-          ff = code->gen(jmpOpr, nullptr, nullptr);
-          t->patch(tt);
-          attrs->addTrue(tt);
-          attrs->addFalse(ff);
-        }
-        else {
-          attrs->addTrue(t);
-        }
-        break;
       }
-    case typeTree::FRACPROMO:
-    case typeTree::FLOATPROMO:
-    default:
-      {
-        yyerror("Type Mismatch");
-        assert(false);
+      else {
+        const int offset = Type::size.at(ex1->getType()) / 2;
+        TempAddress * u = mem.getNewTemp(offset),
+          * v = mem.getNewTemp(offset);
+        ConstAddress * num = new ConstAddress(0),
+          * denom = new ConstAddress(offset);
+        TacInstr * tt = nullptr,
+          * ff = nullptr;
+
+        code->gen(offsetOpr, ex1->getAddr(), num, u);
+        code->gen(offsetOpr, ex2->getAddr(), num, v);
+        t = code->gen(jeOpr, u, v, nullptr);
+        f = code->gen(jmpOpr, nullptr, nullptr);
+        attrs->addFalse(f);
+        tt = code->gen(offsetOpr, ex1->getAddr(), denom, u);
+        t->patch(tt);
+        code->gen(offsetOpr, ex2->getAddr(), denom, v);
+        tt = code->gen(jeOpr, u, v, nullptr);
+        ff = code->gen(jmpOpr, nullptr, nullptr);
+        attrs->addTrue(tt);
+        attrs->addFalse(ff);
       }
+      break;
     }
+  default:
+    {
+      yyerror("Type Mismatch");
+      assert(false);
+    }
+  }
   $$ = attrs;
 }
 | expr REQ expr
 {
   // boolean lax equality
   ExprAttr * ex1 = static_cast<ExprAttr*>($1),
-           * ex2 = static_cast<ExprAttr*>($3);
+    * ex2 = static_cast<ExprAttr*>($3);
   BoolAttr * attrs = new BoolAttr();
   TacInstr * t = nullptr,
-           * f = nullptr;
+    * f = nullptr;
 
-  switch(ex1->getType() ^ ex2->getType())
+  switch(ex1->getType() ^ ex2->getType()) {
+  case typeTree::IDENTITY:
     {
-    case typeTree::IDENTITY:
-      {
-        if(ex1->getType() == typeTree::fracType) {
-          const int offset = Type::size.at(typeTree::fracType) / 2;
-          TempAddress * u = mem.getNewTemp(offset),
-                      * v = mem.getNewTemp(offset),
-                      * w = mem.getNewTemp(offset);
-          ConstAddress * num = new ConstAddress(0),
-                       * denom = new ConstAddress(offset);
-
-          code->gen(offsetOpr, ex1->getAddr(), num, u);
-          code->gen(offsetOpr, ex1->getAddr(), denom, v);
-          code->gen(divOpr, u, v, u);
-          code->gen(offsetOpr, ex2->getAddr(), num, v);
-          code->gen(offsetOpr, ex2->getAddr(), denom, w);
-          code->gen(divOpr, v, w, v);
-          t = code->gen(jeOpr, u, v, nullptr);
-          f = code->gen(jmpOpr, nullptr, nullptr);
-          attrs->addTrue(t);
-          attrs->addFalse(f);
-        }
-        else {
-          t = code->gen(jeOpr, ex1->getAddr(), ex2->getAddr(), nullptr);
-          f = code->gen(jmpOpr, nullptr, nullptr);
-          attrs->addTrue(t);
-          attrs->addFalse(f);
-        }
-        break;
-      }
-    case typeTree::FRACPROMO:
-      {
-        const int offset = Type::size.at(typeTree::fracType) / 2;
-        TempAddress * u = mem.getNewTemp(offset),
-                    * v = mem.getNewTemp(offset);
-        ConstAddress * num = new ConstAddress(0),
-                     * denom = new ConstAddress(offset);
-        if(ex1->getType() == typeTree::fracType) {
-          code->gen(offsetOpr, ex1->getAddr(), num, u);
-          code->gen(offsetOpr, ex1->getAddr(), denom, v);
-          code->gen(divOpr, u, v, u);
-          t = code->gen(jeOpr, u, ex2->getAddr(), nullptr);
-        }
-        else {
-          code->gen(offsetOpr, ex2->getAddr(), num, u);
-          code->gen(offsetOpr, ex2->getAddr(), denom, v);
-          code->gen(divOpr, u, v, u);
-          t = code->gen(jeOpr, u, ex1->getAddr(), nullptr);
-        }
+      if(ex1->getType() != typeTree::fracType) {
+        t = code->gen(jeOpr, ex1->getAddr(), ex2->getAddr(), nullptr);
         f = code->gen(jmpOpr, nullptr, nullptr);
         attrs->addTrue(t);
         attrs->addFalse(f);
-        break;
       }
-    case typeTree::FLOATPROMO: /* TBD */
-    default:
-      {
-        yyerror("Type Mismatch");
-        assert(false);
+      else {
+        const int offset = Type::size.at(typeTree::fracType) / 2;
+        TempAddress * u = mem.getNewTemp(offset),
+          * v = mem.getNewTemp(offset),
+          * w = mem.getNewTemp(offset);
+        ConstAddress * num = new ConstAddress(0),
+          * denom = new ConstAddress(offset);
+
+        code->gen(offsetOpr, ex1->getAddr(), num, u);
+        code->gen(offsetOpr, ex1->getAddr(), denom, v);
+        code->gen(divOpr, u, v, u);
+        code->gen(offsetOpr, ex2->getAddr(), num, v);
+        code->gen(offsetOpr, ex2->getAddr(), denom, w);
+        code->gen(divOpr, v, w, v);
+        t = code->gen(jeOpr, u, v, nullptr);
+        f = code->gen(jmpOpr, nullptr, nullptr);
+        attrs->addTrue(t);
+        attrs->addFalse(f);
       }
+      break;
     }
+  case typeTree::FRACPROMO:
+    {
+      const int offset = Type::size.at(typeTree::fracType) / 2;
+      TempAddress * u = mem.getNewTemp(offset),
+        * v = mem.getNewTemp(offset);
+      ConstAddress * num = new ConstAddress(0),
+        * denom = new ConstAddress(offset);
+
+      if(ex1->getType() == typeTree::fracType) {
+        code->gen(offsetOpr, ex1->getAddr(), num, u);
+        code->gen(offsetOpr, ex1->getAddr(), denom, v);
+        code->gen(divOpr, u, v, u);
+        t = code->gen(jeOpr, u, ex2->getAddr(), nullptr);
+      }
+      else {
+        code->gen(offsetOpr, ex2->getAddr(), num, u);
+        code->gen(offsetOpr, ex2->getAddr(), denom, v);
+        code->gen(divOpr, u, v, u);
+        t = code->gen(jeOpr, u, ex1->getAddr(), nullptr);
+      }
+
+      f = code->gen(jmpOpr, nullptr, nullptr);
+      attrs->addTrue(t);
+      attrs->addFalse(f);
+      break;
+    }
+  case typeTree::FLOATPROMO: /* TBD */
+  default:
+    {
+      yyerror("Type Mismatch");
+      assert(false);
+    }
+  }
   $$ = attrs;
 }
 | cond OR

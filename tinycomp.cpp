@@ -44,11 +44,6 @@ ConstAddress::ConstAddress(float f) {
   val.f = f;
 }
 
-ConstAddress::ConstAddress(Fraction frac) {
-  type = fracType;
-  val.frac = frac;
-}
-
 /** Returns the constant's type (as a typeName enum)
  */
 typeName ConstAddress::getType() {
@@ -62,8 +57,6 @@ const char* ConstAddress::toString() const {
   case intType: snprintf(str, 10, "%d", val.i);
     break;
   case floatType: snprintf(str, 10, "%2.2f", val.f);
-    break;
-  case fracType: snprintf(str, 20, "%d|%d", val.frac.num, val.frac.denom);
     break;
   default: strncpy(str, "?", 1);
     break;
